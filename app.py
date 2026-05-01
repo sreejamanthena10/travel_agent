@@ -12,12 +12,10 @@ st.title("✈️ AI Travel Concierge")
 api_key = st.sidebar.text_input("Gemini API Key", type="password")
 
 # --- 3. Knowledge Base Loader ---
+
 @st.cache_resource
 def load_data(_key): 
-    # Sets the API key inside the cached function
     os.environ["GOOGLE_API_KEY"] = _key
-    
-    # Path to your PDFs on GitHub
     base_path = os.path.dirname(__file__)
     data_folder = os.path.join(base_path, "data", "raw")
     
@@ -30,9 +28,16 @@ def load_data(_key):
             all_pages.extend(loader.load_and_split())
             
     if all_pages:
-        # Using the corrected model name from the 404 error
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
-        return FAISS.from_documents(all_pages, embeddings)
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        
+        # --- FIX START ---
+        # Instead of FAISS.from_documents, we build it manually to avoid length mismatch
+        vector_db = FAISS.from_documents([all_pages[0]], embeddings)
+        if len(all_pages) > 1:
+            vector_db.add_documents(all_pages[1:])
+        # --- FIX END ---
+        
+        return vector_db
     return None
 
 # --- 4. Main App Logic ---
