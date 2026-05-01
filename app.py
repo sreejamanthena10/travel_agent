@@ -31,7 +31,7 @@ def load_data(_key):
             
     if all_pages:
         # Initialize embeddings precisely when needed
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+     embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
         # This line converts text to vectors using the API key
         return FAISS.from_documents(all_pages, embeddings)
     return None
