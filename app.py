@@ -53,3 +53,12 @@ if api_key:
         st.error("⚠️ No PDF found in 'data/raw/'.")
 else:
     st.info("👋 Enter your API Key in the sidebar to start.")
+
+from langchain_community.document_loaders import PyPDFLoader
+
+# Use relative paths that point to your local project folder
+loader_hotel = PyPDFLoader('./data/raw/Hotel_Booking_Confirmation.pdf')
+loader_brochure = PyPDFLoader('./data/raw/Hyderabad_Travel_Brochure (1).pdf')
+
+# The rest of your code remains exactly the same!
+docs = loader_hotel.load() + loader_brochure.load()
