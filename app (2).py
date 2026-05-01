@@ -5,13 +5,12 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 
-# --- 1. Page Configuration ---
+# --- 1. Basic Page Config ---
 st.set_page_config(page_title="AI Travel Assistant", layout="centered")
 st.title("✈️ AI Travel Concierge")
 
-# --- 2. Security & API Setup ---
-# Enter your Gemini API Key in the sidebar
-api_key = st.sidebar.text_input("Gemini API Key", type="password")
+# --- 2. API Key Sidebar ---
+api_key = st.sidebar.text_input("Enter Gemini API Key", type="password")
 
 if api_key:
     os.environ["GOOGLE_API_KEY"] = api_key
@@ -20,15 +19,15 @@ if api_key:
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
-    # --- 3. Knowledge Base Logic ---
+    # --- 3. Knowledge Base ---
     @st.cache_resource
     def load_kb():
-        # Looks for your PDF in the data/raw folder
+        # Path must match your GitHub folder structure
         folder = "./data/raw"
         if os.path.exists(folder):
             pdfs = [f for f in os.listdir(folder) if f.endswith('.pdf')]
             if pdfs:
-                # Load the first PDF found for simplicity
+                # Load the first PDF found
                 loader = PyPDFLoader(os.path.join(folder, pdfs[0]))
                 pages = loader.load_and_split()
                 return FAISS.from_documents(pages, embeddings)
@@ -37,14 +36,14 @@ if api_key:
     vector_db = load_kb()
 
     if vector_db:
-        # --- 4. Chat Interface ---
-        query = st.chat_input("Ask about your trip (e.g., check-in times):")
+        # --- 4. Chat logic ---
+        query = st.chat_input("Ask about your trip (e.g., flight details):")
         
         if query:
             with st.chat_message("user"):
                 st.markdown(query)
             
-            # Simple, stable QA Chain
+            # Use the most stable QA chain
             qa_chain = RetrievalQA.from_chain_type(
                 llm=llm,
                 chain_type="stuff",
@@ -55,6 +54,6 @@ if api_key:
                 response = qa_chain.run(query)
                 st.markdown(response)
     else:
-        st.error("⚠️ No PDF files found in `data/raw/`. Please upload your travel PDF to GitHub.")
+        st.error("⚠️ No PDFs found in `data/raw/`. Please check your GitHub folders.")
 else:
-    st.info("👋 Welcome! Please enter your Gemini API Key in the sidebar to start.")
+    st.info("👋 Please enter your Gemini API Key in the sidebar to start.")
