@@ -28,17 +28,20 @@ def load_data(_key):
             all_pages.extend(loader.load_and_split())
             
     if all_pages:
+        # Use the most recent 2026 stable model
         embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
         
-        # --- FIX START ---
-        # Instead of FAISS.from_documents, we build it manually to avoid length mismatch
+        # --- THE FIX ---
+        # Initialize the database with just the first page (avoids the mismatch error)
         vector_db = FAISS.from_documents([all_pages[0]], embeddings)
+        
+        # Add the remaining pages one-by-one to ensure length equality
         if len(all_pages) > 1:
             vector_db.add_documents(all_pages[1:])
-        # --- FIX END ---
         
         return vector_db
     return None
+    
 
 # --- 4. Main App Logic ---
 if api_key:
