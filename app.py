@@ -58,7 +58,7 @@ if api_key:
                 context = "\n".join([d.page_content for d in docs])
                 
                 # Generate answer with Gemini
-                llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
+                llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview")
                 prompt = f"Use this context: {context}\n\nQuestion: {query}"
                 response = llm.invoke(prompt)
                 
