@@ -29,11 +29,9 @@ def load_data(_key):
             loader = PyPDFLoader(file_path)
             all_pages.extend(loader.load_and_split())
             
-    if all_pages:
-        # Initialize embeddings precisely when needed
-     embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
-        # This line converts text to vectors using the API key
-        return FAISS.from_documents(all_pages, embeddings)
+  if all_pages:
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        return FAISS.from_documents(all_pages, embeddings) # Perfectly aligned
     return None
 
 # --- 4. Main Logic ---
@@ -66,3 +64,23 @@ if api_key:
         st.info("Try rebooting the app from the 'Manage app' menu.")
 else:
     st.info("👋 Please enter your Gemini API Key in the sidebar to start.")
+
+
+@st.cache_resource
+def load_data(_key): 
+    os.environ["GOOGLE_API_KEY"] = _key
+    base_path = os.path.dirname(__file__)
+    data_folder = os.path.join(base_path, "data", "raw")
+    
+    all_pages = []
+    if os.path.exists(data_folder):
+        files = [f for f in os.listdir(data_folder) if f.lower().endswith('.pdf')]
+        for f in files:
+            file_path = os.path.join(data_folder, f)
+            loader = PyPDFLoader(file_path)
+            all_pages.extend(loader.load_and_split())
+            
+    if all_pages:
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        return FAISS.from_documents(all_pages, embeddings)
+    return None
