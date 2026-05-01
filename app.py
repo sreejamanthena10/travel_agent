@@ -6,56 +6,56 @@ from langchain_community.vectorstores import FAISS
 
 # --- 1. Basic Page Config ---
 st.set_page_config(page_title="Travel AI", layout="centered")
-st.title("✈️ Simple Travel Assistant")
+st.title("✈️ AI Travel Concierge")
 
 # --- 2. Sidebar for API Key ---
 api_key = st.sidebar.text_input("Gemini API Key", type="password")
 
-if api_key:
-    os.environ["GOOGLE_API_KEY"] = api_key
+# --- 3. THE FIXED FUNCTION (Paste this here) ---
+@st.cache_resource
+def load_data(_api_key): 
+    # Force the environment variable inside the cached function
+    os.environ["GOOGLE_API_KEY"] = _api_key
     
-    # Initialize models
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-
-    # --- 3. Fail-Safe PDF Loader ---
-    @st.cache_resource
-    def load_data():
-        # DYNAMIC PATH: This looks for the 'data/raw' folder relative to app.py
-        base_path = os.path.dirname(__file__)
-        data_folder = os.path.join(base_path, "data", "raw")
-        
-        if os.path.exists(data_folder):
-            # Get a list of all PDFs in that folder
-            files = [f for f in os.listdir(data_folder) if f.lower().endswith('.pdf')]
+    base_path = os.path.dirname(__file__)
+    data_folder = os.path.join(base_path, "data", "raw")
+    
+    all_pages = []
+    if os.path.exists(data_folder):
+        files = [f for f in os.listdir(data_folder) if f.lower().endswith('.pdf')]
+        for f in files:
+            loader = PyPDFLoader(os.path.join(data_folder, f))
+            all_pages.extend(loader.load_and_split())
             
-            if files:
-                # Load the first PDF found regardless of its name
-                loader = PyPDFLoader(os.path.join(data_folder, files[0]))
-                pages = loader.load_and_split()
-                return FAISS.from_documents(pages, embeddings)
-        return None
+    if all_pages:
+        # Initialize embeddings INSIDE the function for stability
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        return FAISS.from_documents(all_pages, embeddings)
+    return None
 
-    vector_db = load_data()
+# --- 4. Main App Logic ---
+if api_key:
+    # We pass the api_key as an argument so the cache knows to use it
+    vector_db = load_data(api_key)
 
     if vector_db:
-        # --- 4. Simple Chat Interface ---
         query = st.chat_input("Ask about your trip:")
         if query:
             with st.chat_message("user"):
                 st.markdown(query)
             
-            # Search PDF for answer
+            # Simple RAG search
             docs = vector_db.similarity_search(query, k=3)
             context = "\n".join([d.page_content for d in docs])
             
-            # Simple prompt logic
-            prompt = f"Using this info: {context}\n\nAnswer this: {query}"
+            # Initialize Chat Model
+            llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
+            prompt = f"Use this context to answer: {context}\n\nQuestion: {query}"
             response = llm.invoke(prompt)
             
             with st.chat_message("assistant"):
                 st.markdown(response.content)
     else:
-        st.error(f"⚠️ No PDF found! Please ensure your file is in a folder named 'data/raw' on GitHub.")
+        st.error("⚠️ No PDF found in 'data/raw/'.")
 else:
-    st.info("👋 Enter your Gemini API Key in the sidebar to start.")
+    st.info("👋 Enter your API Key in the sidebar to start.")
