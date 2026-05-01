@@ -5,18 +5,18 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 
-# --- 1. Page Config ---
-st.set_page_config(page_title="Travel Concierge", layout="centered")
+# --- 1. Page Configuration ---
+st.set_page_config(page_title="AI Travel Assistant", layout="centered")
 st.title("✈️ AI Travel Concierge")
 
-# --- 2. API Key Setup ---
+# --- 2. Security & API Setup ---
 # Enter your Gemini API Key in the sidebar
 api_key = st.sidebar.text_input("Gemini API Key", type="password")
 
 if api_key:
     os.environ["GOOGLE_API_KEY"] = api_key
     
-    # Initialize Gemini & Embeddings
+    # Initialize models
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
@@ -38,7 +38,7 @@ if api_key:
 
     if vector_db:
         # --- 4. Chat Interface ---
-        query = st.chat_input("Ask a question about your travel documents:")
+        query = st.chat_input("Ask about your trip (e.g., check-in times):")
         
         if query:
             with st.chat_message("user"):
@@ -55,6 +55,6 @@ if api_key:
                 response = qa_chain.run(query)
                 st.markdown(response)
     else:
-        st.error("⚠️ No PDF files found in `data/raw/`. Please upload a PDF to GitHub.")
+        st.error("⚠️ No PDF files found in `data/raw/`. Please upload your travel PDF to GitHub.")
 else:
     st.info("👋 Welcome! Please enter your Gemini API Key in the sidebar to start.")
