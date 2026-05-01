@@ -31,7 +31,7 @@ def load_data(_key):
             
     if all_pages:
         # Using the corrected model name from the 404 error
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
         return FAISS.from_documents(all_pages, embeddings)
     return None
 
