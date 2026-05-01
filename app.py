@@ -12,7 +12,6 @@ st.title("✈️ AI Travel Concierge")
 api_key = st.sidebar.text_input("Gemini API Key", type="password")
 
 # --- 3. Knowledge Base Loader ---
-
 @st.cache_resource
 def load_data(_key): 
     os.environ["GOOGLE_API_KEY"] = _key
@@ -28,20 +27,20 @@ def load_data(_key):
             all_pages.extend(loader.load_and_split())
             
     if all_pages:
-        # Use the most recent 2026 stable model
+        # Use the newest 2026 stable model ID
         embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
         
         # --- THE FIX ---
-        # Initialize the database with just the first page (avoids the mismatch error)
+        # 1. Initialize with just the FIRST document to ensure 1:1 length
         vector_db = FAISS.from_documents([all_pages[0]], embeddings)
         
-        # Add the remaining pages one-by-one to ensure length equality
+        # 2. Add the remaining documents one-by-one
         if len(all_pages) > 1:
-            vector_db.add_documents(all_pages[1:])
+            for page in all_pages[1:]:
+                vector_db.add_documents([page])
         
         return vector_db
     return None
-    
 
 # --- 4. Main App Logic ---
 if api_key:
