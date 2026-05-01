@@ -28,7 +28,7 @@ def load_data(_key):
             all_pages.extend(loader.load_and_split())
             
     if all_pages:
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
         
         # --- FIX START ---
         # Instead of FAISS.from_documents, we build it manually to avoid length mismatch
