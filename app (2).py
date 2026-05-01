@@ -1,4 +1,3 @@
-!pip install streamlit
 import streamlit as st
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
@@ -20,16 +19,14 @@ if api_key:
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
-    # 3. Simple Knowledge Base
+    # 3. Knowledge Base
     @st.cache_resource
     def load_kb():
         path = "./data/raw"
         if os.path.exists(path):
             files = [f for f in os.listdir(path) if f.endswith('.pdf')]
             if files:
-                # Load the first PDF found
                 loader = PyPDFLoader(os.path.join(path, files[0]))
-                # split docs into chunks automatically
                 pages = loader.load_and_split() 
                 return FAISS.from_documents(pages, embeddings)
         return None
@@ -37,14 +34,11 @@ if api_key:
     vector_db = load_kb()
 
     if vector_db:
-        # 4. Chat Interface
-        query = st.chat_input("Ask a question about your trip:")
-        
+        query = st.chat_input("Ask about your trip:")
         if query:
             with st.chat_message("user"):
                 st.markdown(query)
             
-            # Use the most stable QA chain available
             qa_chain = RetrievalQA.from_chain_type(
                 llm=llm,
                 chain_type="stuff",
@@ -55,6 +49,6 @@ if api_key:
                 response = qa_chain.run(query)
                 st.markdown(response)
     else:
-        st.error("⚠️ No PDF found in 'data/raw/'. Check your GitHub folders!")
+        st.error("⚠️ No PDF found in 'data/raw/'.")
 else:
     st.info("Please enter your API Key in the sidebar.")
