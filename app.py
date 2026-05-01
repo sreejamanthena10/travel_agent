@@ -63,23 +63,3 @@ else:
     st.info("👋 Enter your Gemini API Key in the sidebar to start.")
 
 
-@st.cache_resource
-def load_data():
-    # This automatically finds the correct path on GitHub
-    base_path = os.path.dirname(__file__)
-    data_folder = os.path.join(base_path, "data", "raw")
-    
-    all_pages = []
-    
-    if os.path.exists(data_folder):
-        # This looks for ANY file ending in .pdf
-        files = [f for f in os.listdir(data_folder) if f.lower().endswith('.pdf')]
-        
-        for f in files:
-            file_path = os.path.join(data_folder, f)
-            loader = PyPDFLoader(file_path)
-            all_pages.extend(loader.load_and_split())
-            
-    if all_pages:
-        return FAISS.from_documents(all_pages, embeddings)
-    return None
