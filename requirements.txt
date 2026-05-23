@@ -5,3 +5,5 @@ langchain-community
 duckduckgo-search
 requests
 langgraph
+pypdf
+pydantic
