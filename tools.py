@@ -1,21 +1,37 @@
 import requests
 from langchain_core.tools import tool
-from langchain_community.tools import DuckDuckGoSearchRun
+from duckduckgo_search import DDGS
 
-# Tool 1: Web Search (No API key needed)
-web_search = DuckDuckGoSearchRun()
+# --- Tool 1: Clean Custom Search Rewrite for Python 3.14 Compatibility ---
+@tool
+def my_search_tool(query: str) -> str:
+    """Use this tool to search the web for current events, facts, or up-to-date travel info."""
+    try:
+        # We invoke the DDGS object directly, avoiding the broken LangChain utility check
+        with DDGS() as ddgs:
+            results = [r for r in ddgs.text(query, max_results=3)]
+            if not results:
+                return "No matching search results found on the web."
+            
+            # Formulate the results cleanly into a readable string
+            summary = []
+            for r in results:
+                summary.append(f"Title: {r.get('title')}\nSource: {r.get('body')}\n")
+            return "\n".join(summary)
+            
+    except Exception as e:
+        return f"Could not complete web search due to an environmental exception: {str(e)}"
 
-# Tool 2: Custom API with simple error handling
+# --- Tool 2: Custom Weather API (Unchanged) ---
 @tool
 def get_weather(location: str) -> str:
     """Use this tool to find the current weather for a specific city or destination."""
     try:
-        # We use wttr.in, a free text-based weather API
         response = requests.get(f"https://wttr.in/{location}?format=3", timeout=5)
-        response.raise_for_status() # Checks for internet errors
+        response.raise_for_status()
         return f"Weather in {location}: {response.text}"
     except Exception as error:
         return f"Error getting weather data: {error}"
 
-# Group the tools together
-my_tools = [web_search, get_weather]
+# Group the tools together into the clean array your agent expects
+my_tools = [my_search_tool, get_weather]
