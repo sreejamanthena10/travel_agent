@@ -1,4 +1,4 @@
-%%writefile app.py
+
 import streamlit as st
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
