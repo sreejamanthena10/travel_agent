@@ -46,8 +46,13 @@ def load_data(_key):
     return None
 
 # --- FROM WEEK 2: Initialize Agent and Chat History State Variables ---
+# --- FIXED: Use st.cache_resource to stop creating new instances on every click ---
+@st.cache_resource
+def get_cached_agent():
+    return get_agent()
+
 if "agent" not in st.session_state:
-    st.session_state.agent = get_agent()
+    st.session_state.agent = get_cached_agent()
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
