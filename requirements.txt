@@ -5,3 +5,6 @@ langchain-google-genai
 google-generativeai
 pypdf
 faiss-cpu
+duckduckgo-search
+requests
+langgraph
