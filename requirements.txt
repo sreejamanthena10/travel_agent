@@ -1,10 +1,8 @@
 streamlit
 langchain
-langchain-community
 langchain-google-genai
-google-generativeai
-pypdf
-faiss-cpu
+langchain-community
 duckduckgo-search
 requests
 langgraph
+pydantic
