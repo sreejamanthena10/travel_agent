@@ -38,36 +38,29 @@ def clean_agent_output(result):
             last_msg.content = text.replace(r'\"', '"').rstrip("'\" \n\t}]")
     return result
 
-def get_agent():
-    """
-    Safely parses the comma-separated key string and initializes the agent.
-    Loops through backup options if a 429 quota or 400 error strikes.
-    """
+def get_keys_pool():
+    """Extracts a clean, verified list of keys from Streamlit secrets."""
     keys_pool = []
-    
-    # Clean string extraction to completely bypass TOML bracket parsing bugs
     if "GEMINI_API_KEYS" in st.secrets:
         raw_keys = st.secrets["GEMINI_API_KEYS"]
-        # Split by comma and strip out any accidental whitespace or quotes
         keys_pool = [k.strip().replace('"', '').replace("'", "") for k in raw_keys.split(",") if k.strip()]
     elif "GEMINI_API_KEY" in st.secrets:
         keys_pool = [st.secrets["GEMINI_API_KEY"].strip()]
+    return [k for k in keys_pool if k.startswith("AIzaSy")]
 
+def get_agent():
+    """Initializes the agent using the first available working key configuration."""
+    keys_pool = get_keys_pool()
     if not keys_pool:
         return None
 
-    # Step-through key validation loop
     for current_key in keys_pool:
         try:
-            # Skip obviously broken or placeholder entries
-            if not current_key.startswith("AIzaSy"):
-                continue
-                
             os.environ["GOOGLE_API_KEY"] = current_key
             llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
 
             system_instructions = (
-                "You are the ultimate AeroConcierge AI Global Travel Expert. You specialize in high-speed scannability. "
+                "You are the ultimate AeroConcierge AI Global Travel Expert specialized in high-speed scannability. "
                 "You create 6-day weather grids, locate budget-matched hotels, and map out sights all over the world—"
                 "from major international cities to local regional districts.\n\n"
                 
@@ -107,16 +100,13 @@ def get_agent():
             )
 
             agent = create_react_agent(llm, tools=my_tools, prompt=system_instructions)
-            
             original_invoke = agent.invoke
             def secured_invoke(*args, **kwargs):
-                raw_result = original_invoke(*args, **kwargs)
-                return clean_agent_output(raw_result)
+                return clean_agent_output(original_invoke(*args, **kwargs))
                 
             agent.invoke = secured_invoke
-            
             return agent
         except Exception:
-            continue # Try next key string if connection initialization errors out
+            continue
             
     return None
