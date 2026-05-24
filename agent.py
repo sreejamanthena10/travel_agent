@@ -7,7 +7,8 @@ from tools import my_tools
 
 def clean_agent_output(result):
     """
-    Safely intercept and clean the message output dictionary from LangGraph.
+    Safely strips out background metadata, signature string leaks, and JSON artifacts
+    to return pure markdown layout content to app.py.
     """
     if not result or "messages" not in result:
         return result
@@ -17,25 +18,37 @@ def clean_agent_output(result):
         return result
         
     last_msg = messages[-1]
-    if hasattr(last_msg, "content") and isinstance(last_msg.content, str):
-        text = last_msg.content.strip()
-        if '"text":' in text and '"extras"' in text:
-            try:
-                clean_json = text.lstrip("0123456789:[] ,\t\n").rstrip("]")
-                if not clean_json.startswith("{") and "{" in clean_json:
-                    clean_json = clean_json[clean_json.index("{"):]
-                
-                parsed = json.loads(clean_json)
-                if "text" in parsed:
-                    last_msg.content = parsed["text"]
-            except Exception:
-                if '"text":"' in text:
-                    extracted = text.split('"text":"', 1)[1].split('","extras"', 1)[0]
-                    last_msg.content = extracted.rstrip('"\n\t }')
-                elif '"text": "' in text:
-                    extracted = text.split('"text": "', 1)[1].split('",\n"extras"', 1)[0]
-                    last_msg.content = extracted.rstrip('"\n\t }')
-                    
+    if hasattr(last_msg, "content"):
+        # If it's a list package from the model, extract text chunks safely
+        if isinstance(last_msg.content, list):
+            extracted = []
+            for chunk in last_msg.content:
+                if isinstance(chunk, dict) and "text" in chunk:
+                    extracted.append(chunk["text"])
+                elif isinstance(chunk, str):
+                    extracted.append(chunk)
+            last_msg.content = "\n".join(extracted)
+            
+        # Hard clean for leaky raw string dict structures or signature blocks
+        if isinstance(last_msg.content, str):
+            text = last_msg.content.strip()
+            
+            # Catch and strip explicit 'text' field keys from leaking data logs
+            if "'text':" in text or '"text":' in text:
+                for anchor in ["'text': '", '"text": "', "'text':", '"text":']:
+                    if anchor in text:
+                        try:
+                            text = text.split(anchor, 1)[1]
+                            for term in ["', 'extras'", '", "extras"', "',\n'extras'", '",\n"extras"']:
+                                if term in text:
+                                    text = text.split(term, 1)[0]
+                            break
+                        except:
+                            pass
+            
+            # Remove trailing brackets, syntax tags, or escape quotes cleanly
+            last_msg.content = text.replace(r'\"', '"').rstrip("'\" \n\t}]")
+            
     return result
 
 def get_agent():
