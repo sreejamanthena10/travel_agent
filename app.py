@@ -136,11 +136,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize persistent destination trackers in memory
+# Initialize persistent destination trackers silently in memory
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "current_destination" not in st.session_state:
-    st.session_state.current_destination = "Africa" # Smart default context setting
+    st.session_state.current_destination = "" # Starts empty, logs dynamically from your chat queries
 
 # --- 3. Render Top Branding Hero Content ---
 st.markdown("""
@@ -156,62 +156,14 @@ st.markdown("""
 # Latch variable for monitoring button selections
 click_prompt = ""
 
-# --- 4. Render Service Display Cards System ---
-st.markdown(f'<div style="text-align:center; color:#ea580c; font-weight:600; font-size:1.05rem; margin-top:-1rem; margin-bottom:2rem;">📍 Active Target Tracked: {st.session_state.current_destination}</div>', unsafe_allow_html=True)
+# --- 4. Render Service Display Cards System (Exactly like your screenshot) ---
+st.markdown('<p style="text-align:center; color:#64748b; margin-top:-1rem; margin-bottom:2rem;">Start by choosing priority service or just describing your needs below!</p>', unsafe_allow_html=True)
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     if st.button("", key="btn_itinerary"):
-        click_prompt = f"Build a comprehensive scannability-optimized daily travel itinerary layout for: {st.session_state.current_destination}"
-        st.session_state.messages.append({"role": "user", "content": f"📍 Build full Itinerary for **{st.session_state.current_destination}**"})
-    st.markdown('<div class="feature-card card-yellow" style="margin-top: -55px;"><div><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences and days.</div></div><div style="font-size: 3rem; text-align: right;">📍</div></div>', unsafe_allow_html=True)
-
-with col2:
-    if st.button("", key="btn_flights"):
-        click_prompt = f"Find flight travel route options, tracking deals, carrier connections, and pricing structures for: {st.session_state.current_destination}"
-        st.session_state.messages.append({"role": "user", "content": f"📅 Search Flights to **{st.session_state.current_destination}**"})
-    st.markdown('<div class="feature-card card-blue-light" style="margin-top: -55px;"><div><div class="card-title">Find Flights</div><div class="card-desc">Smart deals tracked across multiple global sources.</div></div><div style="font-size: 3rem; text-align: right;">📅</div></div>', unsafe_allow_html=True)
-
-with col3:
-    if st.button("", key="btn_hotels"):
-        click_prompt = f"Find a detailed budget hotel matrix with multiple comfort choices, nightly rates, and features for destination: {st.session_state.current_destination}"
-        st.session_state.messages.append({"role": "user", "content": f"🏨 Find Budget Hotels in **{st.session_state.current_destination}**"})
-    st.markdown('<div class="feature-card card-blue-dark" style="margin-top: -55px;"><div><div class="card-title">Find Hotels</div><div class="card-desc">Perfect accommodation metrics matched to your needs.</div></div><div style="font-size: 3rem; text-align: right;">🏨</div></div>', unsafe_allow_html=True)
-
-with col4:
-    if st.button("", key="btn_suggest"):
-        click_prompt = f"Show me top landmarks, unique highlights, and sightseeing items near: {st.session_state.current_destination}"
-        st.session_state.messages.append({"role": "user", "content": f"🔮 Explore Sights near **{st.session_state.current_destination}**"})
-    st.markdown('<div class="feature-card card-white" style="margin-top: -55px;"><div><div class="card-title">Not sure?</div><div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div></div><div style="font-size: 3rem; text-align: right;">🔮</div></div>', unsafe_allow_html=True)
-
-# --- 5. AGENT CONFIGURATION UTILITIES ---
-keys_list = get_keys_pool()
-
-@st.cache_resource
-def load_data(_key): 
-    os.environ["GOOGLE_API_KEY"] = _key
-    base_path = os.path.dirname(__file__)
-    data_folder = os.path.join(base_path, "data", "raw")
-    all_pages = []
-    if os.path.exists(data_folder):
-        files = [f for f in os.listdir(data_folder) if f.lower().endswith('.pdf')]
-        for f in files:
-            file_path = os.path.join(data_folder, f)
-            try:
-                loader = PyPDFLoader(file_path)
-                all_pages.extend(loader.load_and_split())
-            except Exception:
-                continue
-    if all_pages:
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-        return FAISS.from_documents([all_pages[0]], embeddings)
-    return None
-
-try:
-    if "agent" not in st.session_state or st.session_state.agent is None:
-        st.session_state.agent = get_agent()
-except Exception:
-    st.session_state.agent = None
-
-# Wrap chat viewport
+        target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
+        click_prompt = f"Build a comprehensive travel itinerary layout for: {target}"
+        st.session_state.messages.append({"role": "user", "content": f"📍 Build full Itinerary for **{target}**"})
+    st.markdown('<div
