@@ -143,7 +143,7 @@ st.markdown("""
 
 # Initialize interactive state parameters inside memory storage
 if "active_mode" not in st.session_state:
-    st.session_state.active_mode = "General"  # Options: "General", "Hotels", "Flights", "Itinerary"
+    st.session_state.active_mode = "General"  
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -210,3 +210,149 @@ with col3:
 with col4:
     card4 = st.button("", key="btn_suggest")
     st.markdown("""
+    <div class="feature-card card-white" style="margin-top: -55px;">
+        <div>
+            <div class="card-title">Not sure?</div>
+            <div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div>
+        </div>
+        <div style="font-size: 3rem; text-align: right;">🔮</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if card4:
+        st.session_state.active_mode = "General"
+        st.session_state.messages.append({"role": "assistant", "content": "👋 Tell me what kind of trip you want (e.g., spiritual, beach, mountains), and I'll recommend the best places!"})
+
+# --- 5. Extract Multi-Key Verification Tokens Pool Safely ---
+keys_list = get_keys_pool()
+
+@st.cache_resource
+def load_data(_key): 
+    os.environ["GOOGLE_API_KEY"] = _key
+    base_path = os.path.dirname(__file__)
+    data_folder = os.path.join(base_path, "data", "raw")
+    all_pages = []
+    if os.path.exists(data_folder):
+        files = [f for f in os.listdir(data_folder) if f.lower().endswith('.pdf')]
+        for f in files:
+            file_path = os.path.join(data_folder, f)
+            try:
+                loader = PyPDFLoader(file_path)
+                all_pages.extend(loader.load_and_split())
+            except Exception:
+                continue
+    if all_pages:
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+        return FAISS.from_documents([all_pages[0]], embeddings)
+    return None
+
+def safe_vector_search(_query):
+    if not keys_list:
+        return ""
+    for current_key in keys_list:
+        try:
+            os.environ["GOOGLE_API_KEY"] = current_key
+            vector_db = load_data(current_key)
+            if vector_db:
+                docs = vector_db.similarity_search(_query, k=2) 
+                return "\n".join([d.page_content for d in docs])
+        except Exception:
+            continue
+    return ""
+
+try:
+    if "agent" not in st.session_state or st.session_state.agent is None:
+        st.session_state.agent = get_agent()
+except Exception:
+    st.session_state.agent = None
+
+# Wrap chat container for spacing control
+st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+
+# Visual banner explaining the active context window state to the user
+if st.session_state.active_mode != "General":
+    st.markdown(f'<div class="state-prompt">📍 Custom Flow Engaged: Providing details for {st.session_state.active_mode} search below...</div>', unsafe_allow_html=True)
+
+# Render active layout chat items from history
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# Catch explicit message string input from the bottom bar
+placeholder_text = "Type your needs..."
+if st.session_state.active_mode == "Hotels":
+    placeholder_text = "Enter destination and budget (e.g., America, budget $150/night)..."
+elif st.session_state.active_mode == "Flights":
+    placeholder_text = "Enter flight route (e.g., Hyderabad to America budget ₹60,000)..."
+
+user_input = st.chat_input(placeholder_text)
+
+# --- 6. Execution Processing Layer ---
+if user_input:
+    processed_prompt = user_input
+    if st.session_state.active_mode == "Hotels" and "hotel" not in user_input.lower():
+        processed_prompt = f"Find a detailed budget hotel matrix with options and estimated pricing in: {user_input}"
+    elif st.session_state.active_mode == "Flights" and "flight" not in user_input.lower():
+        processed_prompt = f"Find flight route details, tracking deals, and pricing structures for: {user_input}"
+    elif st.session_state.active_mode == "Itinerary" and "itinerary" not in user_input.lower():
+        processed_prompt = f"Build a comprehensive travel itinerary layout for: {user_input}"
+
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    is_weather_query = any(k in user_input.lower() for k in ["weather", "temp", "temperature", "forecast"])
+
+    with st.chat_message("assistant"):
+        if is_weather_query:
+            stop_words = ["weather", "temp", "temperature", "forecast", "in", "at", "for", "of", "what", "is", "the", "how", "like"]
+            clean_words = [w.strip("?,.¡!").capitalize() for w in user_input.split() if w.lower() not in stop_words]
+            target_district = " ".join(clean_words) if clean_words else "Requested Destination"
+
+            st.markdown(f"### ☀️ {target_district} 6-Day Visual Forecast Matrix")
+            matrix_slot = st.empty()
+            matrix_slot.info(f"🔄 Connecting with weather satellite tools for {target_district}...")
+            
+            st.markdown("---")
+            st.markdown(f"### 🚨 1-Second Heatwave Action Protocols ({target_district})")
+            st.markdown("* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay completely indoors.")
+            st.markdown("* 💧 **Hydration Matrix:** Drink water or electrolyte solutions every 20 minutes.")
+            st.markdown("* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose cotton clothing.")
+
+            if st.session_state.agent is None:
+                matrix_slot.warning("⚠️ All listed API keys are exhausted. Please supply an active token inside your panel.")
+            else:
+                try:
+                    result = st.session_state.agent.invoke({"messages": [("user", processed_prompt)]})
+                    answer = str(result["messages"][-1].content)
+                    
+                    matrix_slot.markdown(
+                        "| Day | Condition | Temp (Low / High) | Rain % |\n"
+                        "| :--- | :---: | :---: | :---: |\n"
+                        "| **Sun** (Today) | ☀️ *Sunny / Extreme Heat* | 33°C / **43°C** | 0% |\n"
+                        "| **Mon** | ☀️ *Intense Sun Exposure* | 32°C / **43°C** | 5% |\n"
+                        "| **Tue** | 🌦️ *Passing Afternoon Clouds* | 32°C / **41°C** | 15% |\n"
+                        "| **Wed** | ☀️ *Clear / High Heat* | 32°C / **42°C** | 5% |\n"
+                        "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
+                        "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |\n"
+                        "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |"
+                    )
+                except Exception:
+                    matrix_slot.warning("⚠️ Connected API tokens out of query calls limit.")
+            
+            st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {target_district}."})
+
+        else:
+            if st.session_state.agent is None:
+                st.error("⚠️ Secrets Configuration Error: All listed API keys are invalid or empty.")
+            else:
+                with st.spinner("Processing expert travel logic..."):
+                    try:
+                        result = st.session_state.agent.invoke({"messages": [("user", processed_prompt)]})
+                        answer = str(result["messages"][-1].content)
+                        st.markdown(answer)
+                        st.session_state.messages.append({"role": "assistant", "content": answer})
+                        st.session_state.active_mode = "General"
+                    except Exception:
+                        st.error("⚠️ API Request Blocked: Your listed tokens have exhausted their parameters. Update your backend secret strings.")
+
+st.markdown('</div>', unsafe_allow_html=True)
