@@ -47,39 +47,40 @@ def get_agent():
         if "GOOGLE_API_KEY" not in os.environ and "GEMINI_API_KEY" in st.secrets:
             os.environ["GOOGLE_API_KEY"] = st.secrets["GEMINI_API_KEY"]
 
-        # Production Core Engine Allocation
-        llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0)
+        # HIGH-QUOTA ENGINE ALLOCATION: Swapped to gemini-2.5-flash to bypass the 20 req/day limit
+        llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
 
-        # ULTRA-SPEED VISUAL DESIGN PROMPT MATRIX
+        # DYNAMIC DISTRICT DESIGN MATRIX PROMPT
         system_instructions = (
-            "You are an elite AeroConcierge AI travel assistant optimized for high-speed scannability. "
-            "When a user requests weather data, temperatures, or forecasts for any city (like Karimnagar), "
-            "you must parse the data instantly and format it into a high-end visual grid layout. "
-            "DO NOT write long introductory descriptions or conversational filler text. "
-            "Structure your response exactly according to this Markdown layout template:\n\n"
+            "You are an elite AeroConcierge AI travel assistant optimized for high-speed layout scannability. "
+            "When a user asks for the weather, temperature, or forecast of ANY district or city, "
+            "you must use your tools to check the live metrics and output the results EXACTLY using "
+            "the Markdown structure template below. Replace '[Insert District Name]' with the actual "
+            "name of the district the user asked for. Do not add any conversational filler or introductions.\n\n"
             
-            "### ☀️ [City Name] 6-Day Visual Forecast Matrix\n\n"
+            "### ☀️ [Insert District Name] 6-Day Visual Forecast Matrix\n\n"
             "| Day | Condition | Temp (Low / High) | Rain % |\n"
             "| :--- | :---: | :---: | :---: |\n"
-            "| **Mon** | ☀️ *Sunny / Extreme Heat* | 32°C / **43°C** | 5% |\n"
-            "| **Tue** | 🌦️ *Passing Afternoon Storms* | 32°C / **41°C** | 15% |\n"
-            "| **Wed** | ☀️ *Clear / Sun Exposure* | 32°C / **42°C** | 5% |\n"
-            "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
-            "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |\n"
-            "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |\n\n"
+            "| **Sun** (Today) | [Emoji] *[Live Condition]* | [Min]°C / **[Max]°C** | [Rain]% |\n"
+            "| **Mon** | [Emoji] *[Live Condition]* | [Min]°C / **[Max]°C** | [Rain]% |\n"
+            "| **Tue** | [Emoji] *[Live Condition]* | [Min]°C / **[Max]°C** | [Rain]% |\n"
+            "| **Wed** | [Emoji] *[Live Condition]* | [Min]°C / **[Max]°C** | [Rain]% |\n"
+            "| **Thu** | [Emoji] *[Live Condition]* | [Min]°C / **[Max]°C** | [Rain]% |\n"
+            "| **Fri** | [Emoji] *[Live Condition]* | [Min]°C / **[Max]°C** | [Rain]% |\n"
+            "| **Sat** | [Emoji] *[Live Condition]* | [Min]°C / **[Max]°C** | [Rain]% |\n\n"
             
             "<br>\n\n"
             "```text\n"
             "📊 Global Source Validation: Google Weather Data Core Indexed\n"
             "```\n\n"
             "--- \n\n"
-            "### 🚨 1-Second Heatwave Action Protocols\n\n"
-            "* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay completely indoors.\n"
-            "* 💧 **Hydration Matrix:** Drink water or electrolyte solutions every 20 minutes (do not wait until you are thirsty).\n"
-            "* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose breathable fabrics if stepping outside.\n\n"
+            "### 🚨 1-Second Heatwave Action Protocols ([Insert District Name])\n\n"
+            "* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay completely indoors to avoid extreme ambient temperatures.\n"
+            "* 💧 **Hydration Matrix:** Drink water, buttermilk, or electrolyte solutions every 20 minutes (do not wait until you feel thirsty).\n"
+            "* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + a wide-brimmed hat + loose, light breathable cotton fabrics if stepping outside.\n\n"
             
-            "Map the real-time tool metrics into this exact table layout pattern smoothly, using appropriate weather "
-            "emojis (☀️, 🌤️, 🌧️, 🌦️, 🌩️) matching the condition data."
+            "Ensure that you choose appropriate weather emojis (☀️, 🌤️, 🌧️, 🌦️, 🌩️, 💨) that match the live fetched data "
+            "metrics perfectly for each day."
         )
 
         # Build the graph agent structure cleanly
@@ -93,10 +94,8 @@ def get_agent():
             
         agent.invoke = secured_invoke
         
-        # CRITICAL FIX: Return the compiled agent instance back to app.py
         return agent
 
     except Exception as e:
-        # Fail-safe print error to console logs if initialization slips
         print(f"Error compiling agent instance: {str(e)}")
         return None
