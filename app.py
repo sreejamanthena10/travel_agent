@@ -143,8 +143,14 @@ if "messages" not in st.session_state:
 try:
     os.environ["GOOGLE_API_KEY"] = api_key
     
-    if "agent" not in st.session_state:
-        st.session_state.agent = get_cached_agent(api_key)
+    # SAFE CHECKPOINT: Ensure the agent initialization never returns NoneType
+    if "agent" not in st.session_state or st.session_state.agent is None:
+        with st.spinner("Initializing executive intelligence system..."):
+            st.session_state.agent = get_cached_agent(api_key)
+
+    # Secondary fail-safe backup initialization if cache slips
+    if st.session_state.agent is None:
+        st.session_state.agent = get_agent()
 
     # Render past chat history instantly from session states
     for msg in st.session_state.messages:
