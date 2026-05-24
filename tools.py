@@ -1,14 +1,39 @@
+import os
+import streamlit as st
 from langchain_core.tools import tool
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
-import os
+from langchain_community.utilities import GoogleSearchAPIWrapper
+
+# 1. Initialize the Base Global Web Search Engine Utility Safely
+try:
+    # Fallback to look at primary key arrays if explicit environment variables aren't set yet
+    if "GOOGLE_API_KEY" not in os.environ and "GEMINI_API_KEYS" in st.secrets:
+        os.environ["GOOGLE_API_KEY"] = st.secrets["GEMINI_API_KEYS"].split(",")[0].strip()
+        
+    search_wrapper = GoogleSearchAPIWrapper()
+except Exception:
+    search_wrapper = None
+
+@tool
+def google_travel_search(query: str) -> str:
+    """
+    Searches the live web for global travel information, flight details, hotel pricing, 
+    and famous landmark updates all over the world. Use this for general global destinations.
+    """
+    if search_wrapper:
+        try:
+            return str(search_wrapper.run(query))
+        except Exception as e:
+            return f"Web search temporarily unavailable: {str(e)}"
+    return "Search infrastructure uninitialized. Please configure search variables."
 
 @tool
 def search_local_travel_documents(query: str) -> str:
     """
-    Searches local uploaded PDF travel documents, vouchers, and specific destination itineraries.
-    Use this tool when the user asks about specific plans, uploads, or schedules matching local files.
+    Searches local uploaded PDF travel documents, local vouchers, and specific destination itineraries.
+    Use this tool ONLY when the user asks about specific personal plans, uploads, or schedules matching local files.
     """
     base_path = os.path.dirname(__file__)
     data_folder = os.path.join(base_path, "data", "raw")
@@ -18,17 +43,22 @@ def search_local_travel_documents(query: str) -> str:
         files = [f for f in os.listdir(data_folder) if f.lower().endswith('.pdf')]
         for f in files:
             file_path = os.path.join(data_folder, f)
-            loader = PyPDFLoader(file_path)
-            all_pages.extend(loader.load_and_split())
+            try:
+                loader = PyPDFLoader(file_path)
+                all_pages.extend(loader.load_and_split())
+            except Exception:
+                continue
             
     if all_pages:
-        # Use the same embedding model defined in your environment
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-        vector_db = FAISS.from_documents(all_pages, embeddings)
-        docs = vector_db.similarity_search(query, k=2)
-        return "\n".join([d.page_content for d in docs])
+        try:
+            embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+            vector_db = FAISS.from_documents(all_pages, embeddings)
+            docs = vector_db.similarity_search(query, k=2)
+            return "\n".join([d.page_content for d in docs])
+        except Exception as e:
+            return f"Error reading internal document index: {str(e)}"
     
-    return "No local travel documents found."
+    return "No local travel documents found in the database directory."
 
-# Make sure to append search_local_travel_documents to your my_tools list!
-# my_tools = [google_search, search_local_travel_documents]
+# 2. EXPLICIT VARIABLE EXPORT: This is exactly what agent.py is looking for!
+my_tools = [google_travel_search, search_local_travel_documents]
