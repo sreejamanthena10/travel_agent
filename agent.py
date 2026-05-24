@@ -6,7 +6,7 @@ from langgraph.prebuilt import create_react_agent
 from tools import my_tools
 
 def clean_agent_output(result):
-    """Safely extracts pure text and strips metadata/signature leaks."""
+    """Safely extracts pure markdown text and strips metadata/signature leaks."""
     if not result or "messages" not in result:
         return result
     messages = result["messages"]
@@ -40,7 +40,7 @@ def clean_agent_output(result):
     return result
 
 def get_keys_pool():
-    """Extracts a clean, verified list of keys from Streamlit secrets string."""
+    """Extracts a verified list of keys from the raw comma-separated secrets string."""
     keys_pool = []
     if "GEMINI_API_KEYS" in st.secrets:
         raw_keys = st.secrets["GEMINI_API_KEYS"]
@@ -50,7 +50,7 @@ def get_keys_pool():
     return [k for k in keys_pool if k.startswith("AIzaSy")]
 
 def get_agent():
-    """Initializes the agent by cycling through the keys pool."""
+    """Initializes the compiled agent by cycling through the keys pool validation layer."""
     keys_pool = get_keys_pool()
     if not keys_pool:
         return None
@@ -60,14 +60,15 @@ def get_agent():
             os.environ["GOOGLE_API_KEY"] = current_key
             llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
 
+            # UNIVERSAL INTELLIGENCE MATRIX
             system_instructions = (
                 "You are the ultimate AeroConcierge AI Global Travel Expert. You specialize in high-speed scannability.\n"
                 "You create 6-day weather grids, locate budget-matched hotels, and map out sights all over the world—"
-                "from major international cities to local regional districts.\n\n"
+                "from major international hubs to local regional districts.\n\n"
                 
                 "CRITICAL DESIGN RULES:\n"
-                "1. NEVER write long, dense walls of text. Users must understand your response in 1 second using clean symbols and markdown grids.\n"
-                "2. LOCAL EXPLORATION: If asked about regional spots near Hanamkonda, Karimnagar, or Warangal, immediately highlight famous landmarks "
+                "1. NEVER write long, dense walls of text. Users must understand your response in 1 second using clean symbols, markdown tables, and bullet grids.\n"
+                "2. LOCAL RULES: If asked about regional spots near Hanamkonda, Karimnagar, or Warangal, immediately highlight famous landmarks "
                 "(like the Thousand Pillar Temple, Warangal Fort, Bhadrakali Temple) using checkboxes and clean icons.\n"
                 "3. BUDGET ALLOCATION: When asked for accommodations anywhere in the world, split hotels into exact price tiers:\n"
                 "   - 🎒 Budget Tiers (Hostels, local stays, pocket-friendly homestays)\n"
