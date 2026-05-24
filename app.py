@@ -112,7 +112,7 @@ def load_data(_key):
             all_pages.extend(loader.load_and_split())
             
     if all_pages:
-     embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
         vector_db = FAISS.from_documents([all_pages[0]], embeddings)
         if len(all_pages) > 1:
             for page in all_pages[1:]:
@@ -128,11 +128,10 @@ def get_cached_agent(_key):
 # PERFORMANCE FIX: Cache search operations to prevent UI loop lag
 @st.cache_data
 def fast_vector_search(_query, _key):
-    # Temporarily bind key context for safe thread execution
     os.environ["GOOGLE_API_KEY"] = _key
     vector_db = load_data(_key)
     if vector_db:
-        docs = vector_db.similarity_search(_query, k=2) # Reduced from k=3 to minimize payload parsing size
+        docs = vector_db.similarity_search(_query, k=2) 
         return "\n".join([d.page_content for d in docs])
     return ""
 
@@ -165,48 +164,4 @@ try:
         combined_prompt = (
             f"Use this extracted context from the user's travel documents to help answer if relevant:\n"
             f"{context}\n\n"
-            f"User Question: {user_input}\n\n"
-            f"Note: If the document context isn't enough, or if you need current information "
-            f"(like real-time weather or web details), use your tools automatically."
-        )
-
-        with st.chat_message("assistant"):
-            with st.spinner("Processing..."):
-                
-                # Execute graph logic stream directly
-                result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
-                last_message = result["messages"][-1]
-                answer = ""
-                
-                # Structural payload content parsing
-                if hasattr(last_message, "content") and isinstance(last_message.content, list):
-                    extracted_chunks = []
-                    for chunk in last_message.content:
-                        if isinstance(chunk, dict) and "text" in chunk:
-                            extracted_chunks.append(chunk["text"])
-                        elif isinstance(chunk, str):
-                            extracted_chunks.append(chunk)
-                    answer = "\n".join(extracted_chunks)
-                elif hasattr(last_message, "content"):
-                    answer = str(last_message.content)
-                else:
-                    answer = str(last_message)
-                
-                # Automated token data streaming extraction cleanups
-                if '"text":' in answer or '"signature":' in answer:
-                    for anchor in ['"text":"', '"text": "']:
-                        if anchor in answer:
-                            sliced_data = answer.split(anchor, 1)[1]
-                            for terminator in ['","extras"', '",\n"extras"', '"\n"extras"']:
-                                if terminator in sliced_data:
-                                    sliced_data = sliced_data.split(terminator, 1)[0]
-                            answer = sliced_data.rstrip('"\n\t }]]')
-                            break
-
-                st.write(answer)
-                st.session_state.messages.append({"role": "assistant", "content": answer})
-                        
-except Exception as e:
-    st.error(f"❌ System Exception Encountered: {str(e)}")
-
-st.markdown('</div>', unsafe_allow_html=True)
+            f"User
