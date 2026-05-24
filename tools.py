@@ -1,53 +1,34 @@
-import requests
-import json
 from langchain_core.tools import tool
-from duckduckgo_search import DDGS
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_community.document_loaders import PyPDFLoader
+import os
 
-# --- Tool 1: Clean Custom Search Rewrite ---
 @tool
-def my_search_tool(query: str) -> str:
-    """Use this tool to search the web for current events, facts, or up-to-date travel info."""
-    try:
-        with DDGS() as ddgs:
-            results = [r for r in ddgs.text(query, max_results=3)]
-            if not results:
-                return "No matching search results found on the web."
+def search_local_travel_documents(query: str) -> str:
+    """
+    Searches local uploaded PDF travel documents, vouchers, and specific destination itineraries.
+    Use this tool when the user asks about specific plans, uploads, or schedules matching local files.
+    """
+    base_path = os.path.dirname(__file__)
+    data_folder = os.path.join(base_path, "data", "raw")
+    all_pages = []
+    
+    if os.path.exists(data_folder):
+        files = [f for f in os.listdir(data_folder) if f.lower().endswith('.pdf')]
+        for f in files:
+            file_path = os.path.join(data_folder, f)
+            loader = PyPDFLoader(file_path)
+            all_pages.extend(loader.load_and_split())
             
-            summary = []
-            for r in results:
-                summary.append(f"Title: {r.get('title')}\nSource: {r.get('body')}\n")
-            return "\n".join(summary)
-            
-    except Exception as e:
-        return f"Could not complete web search: {str(e)}"
+    if all_pages:
+        # Use the same embedding model defined in your environment
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+        vector_db = FAISS.from_documents(all_pages, embeddings)
+        docs = vector_db.similarity_search(query, k=2)
+        return "\n".join([d.page_content for d in docs])
+    
+    return "No local travel documents found."
 
-# --- Tool 2: Safe Weather API with JSON Telemetry Stripping ---
-@tool
-def get_weather(location: str) -> str:
-    """Use this tool to find the current weather for a specific city or destination."""
-    try:
-        # Requesting plain-text format from wttr.in
-        response = requests.get(f"https://wttr.in/{location}?format=3", timeout=5)
-        response.raise_for_status()
-        raw_text = response.text.strip()
-        
-        # SAFETY CHECK: If the response accidentally contains a raw json block, extract just the text
-        if raw_text.startswith("{") or '"text"' in raw_text:
-            try:
-                # Clean edge cases where raw strings resemble arrays
-                clean_json_str = raw_text.lstrip("0:").strip("[] \n")
-                data = json.loads(clean_json_str)
-                return f"Weather in {location}: {data.get('text', 'No description available')}"
-            except Exception:
-                # Fallback if manual parsing trips up on nested tokens
-                if '"text":"' in raw_text:
-                    extracted = raw_text.split('"text":"')[1].split('","extras"')[0]
-                    return f"Weather in {location}: {extracted}"
-        
-        return f"Weather in {location}: {raw_text}"
-        
-    except Exception as error:
-        return f"Error getting weather data: {error}"
-
-# Group the tools together cleanly
-my_tools = [my_search_tool, get_weather]
+# Make sure to append search_local_travel_documents to your my_tools list!
+# my_tools = [google_search, search_local_travel_documents]
