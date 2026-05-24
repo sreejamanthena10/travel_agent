@@ -50,18 +50,28 @@ def get_keys_pool():
         keys_pool = [k.strip().replace('"', '').replace("'", "") for k in raw_keys.split(",") if k.strip()]
     elif "GEMINI_API_KEY" in st.secrets:
         keys_pool = [st.secrets["GEMINI_API_KEY"].strip()]
-    return [k for k in keys_pool if k.startswith("AIzaSy")]
+        
+    # Keeps validation adaptive and clear of empty whitespace elements
+    return [k for k in keys_pool if k.strip()]
 
 def get_agent():
-    """Initializes the compiled agent by cycling through the keys pool validation layer."""
+    """Initializes the compiled agent by cycling through and validating keys against live endpoints."""
     keys_pool = get_keys_pool()
     if not keys_pool:
         return None
 
     for current_key in keys_pool:
         try:
+            # Set environment variable parameter
             os.environ["GOOGLE_API_KEY"] = current_key
+            
+            # Initialize target model structure
             llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+
+            # CRITICAL HOTFIX LAYER: Force a light, hidden verification call.
+            # If the token is dead, over quota, or invalid, Google drops this call immediately,
+            # triggering the 'except' block to seamlessly jump to your next key.
+            llm.invoke("ping")
 
             # UNIVERSAL INTELLIGENCE MATRIX
             system_instructions = (
@@ -99,12 +109,17 @@ def get_agent():
 
             agent = create_react_agent(llm, tools=my_tools, prompt=system_instructions)
             original_invoke = agent.invoke
+            
             def secured_invoke(*args, **kwargs):
                 return clean_agent_output(original_invoke(*args, **kwargs))
                 
             agent.invoke = secured_invoke
+            
+            # Key confirmed active, return working agent framework instance
             return agent
+            
         except Exception:
+            # Token failed the validation ping. Suppress error and cycle straight to the next key.
             continue
             
     return None
