@@ -1,12 +1,11 @@
 import streamlit as st
 import os
-import json
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.vectorstores import FAISS
 
 # --- FROM WEEK 2/3: Import your LangGraph multi-tool agent brain ---
 from agent import get_agent 
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import FAISS
 
 # --- 1. Page Configuration (Week 1 - Undisturbed) ---
 st.set_page_config(page_title="Travel AI", layout="centered")
@@ -91,35 +90,43 @@ if api_key:
                     f"(like real-time weather or web details), use your tools automatically."
                 )
 
-                # Get the AI's answer using tools
+                # 2. Get the AI's answer using tools
                 with st.chat_message("assistant"):
                     with st.spinner("Using tools to find the answer..."):
                         
                         result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
-                        answer = result["messages"][-1].content
                         
-                        # --- DOUBLE-CHECKED EXTRACTION FILTER ---
-                        if isinstance(answer, str) and ("text" in answer or "signature" in answer):
-                            try:
-                                # Clean off anomalous prefix markers that break json formatting
-                                clean_target = answer.strip().lstrip("0123456789:[] ,\t\n")
-                                if not clean_target.startswith("{") and "{" in clean_target:
-                                    clean_target = clean_target[clean_target.index("{"):]
-                                    
-                                parsed_json = json.loads(clean_target)
-                                if "text" in parsed_json:
-                                    answer = parsed_json["text"]
-                            except Exception:
-                                # Fallback raw string boundaries split if json parser hits malformed data
-                                for anchor in ['"text":"', '"text": "']:
-                                    if anchor in answer:
-                                        extracted = answer.split(anchor, 1)[1]
-                                        for stop_sign in ['","extras"', '",\n"extras"', '"\n"extras"']:
-                                            if stop_sign in extracted:
-                                                extracted = extracted.split(stop_sign, 1)[0]
-                                        answer = extracted.rstrip('"\n\t }]]')
-                                        break
+                        # Get the last message object from LangGraph history list
+                        last_message = result["messages"][-1]
+                        answer = ""
                         
+                        # --- GROUND TRUTH UNWRAPPER ---
+                        # If the message content arrives as a nested list, loop through and harvest only the text strings
+                        if hasattr(last_message, "content") and isinstance(last_message.content, list):
+                            extracted_chunks = []
+                            for chunk in last_message.content:
+                                if isinstance(chunk, dict) and "text" in chunk:
+                                    extracted_chunks.append(chunk["text"])
+                                elif isinstance(chunk, str):
+                                    extracted_chunks.append(chunk)
+                            answer = "\n".join(extracted_chunks)
+                        elif hasattr(last_message, "content"):
+                            answer = str(last_message.content)
+                        else:
+                            answer = str(last_message)
+                        
+                        # --- LAST-RESORT RAW PACKET EXTRACTION ---
+                        if '"text":' in answer or '"signature":' in answer:
+                            for anchor in ['"text":"', '"text": "']:
+                                if anchor in answer:
+                                    sliced_data = answer.split(anchor, 1)[1]
+                                    for terminator in ['","extras"', '",\n"extras"', '"\n"extras"']:
+                                        if terminator in sliced_data:
+                                            sliced_data = sliced_data.split(terminator, 1)[0]
+                                    answer = sliced_data.rstrip('"\n\t }]]')
+                                    break
+
+                        # Render the clean answer text smoothly on your page screen
                         st.write(answer)
                         st.session_state.messages.append({"role": "assistant", "content": answer})
                         
