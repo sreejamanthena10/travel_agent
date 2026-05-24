@@ -136,11 +136,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize persistent mode memories inside session tracking storage
+# Initialize persistent destination trackers in memory
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "current_destination" not in st.session_state:
-    st.session_state.current_destination = "Arunachalam" # Vetted smart default location tracker
+    st.session_state.current_destination = "Africa" # Smart default context setting
 
 # --- 3. Render Top Branding Hero Content ---
 st.markdown("""
@@ -153,23 +153,23 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Tracking click triggers
+# Latch variable for monitoring button selections
 click_prompt = ""
 
 # --- 4. Render Service Display Cards System ---
-st.markdown(f'<p style="text-align:center; color:#ea580c; font-weight:600; margin-top:-1rem; margin-bottom:2rem;">Current target track: {st.session_state.current_destination} (Type a new location below at any time to update)</p>', unsafe_allow_html=True)
+st.markdown(f'<div style="text-align:center; color:#ea580c; font-weight:600; font-size:1.05rem; margin-top:-1rem; margin-bottom:2rem;">📍 Active Target Tracked: {st.session_state.current_destination}</div>', unsafe_allow_html=True)
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     if st.button("", key="btn_itinerary"):
-        click_prompt = f"Build a comprehensive scannability-optimized daily travel itinerary spanning a few days for: {st.session_state.current_destination}"
+        click_prompt = f"Build a comprehensive scannability-optimized daily travel itinerary layout for: {st.session_state.current_destination}"
         st.session_state.messages.append({"role": "user", "content": f"📍 Build full Itinerary for **{st.session_state.current_destination}**"})
     st.markdown('<div class="feature-card card-yellow" style="margin-top: -55px;"><div><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences and days.</div></div><div style="font-size: 3rem; text-align: right;">📍</div></div>', unsafe_allow_html=True)
 
 with col2:
     if st.button("", key="btn_flights"):
-        click_prompt = f"Find flight travel route options, flight carrier connections, tracking deals, and estimated pricing for traveling to: {st.session_state.current_destination}"
+        click_prompt = f"Find flight travel route options, tracking deals, carrier connections, and pricing structures for: {st.session_state.current_destination}"
         st.session_state.messages.append({"role": "user", "content": f"📅 Search Flights to **{st.session_state.current_destination}**"})
     st.markdown('<div class="feature-card card-blue-light" style="margin-top: -55px;"><div><div class="card-title">Find Flights</div><div class="card-desc">Smart deals tracked across multiple global sources.</div></div><div style="font-size: 3rem; text-align: right;">📅</div></div>', unsafe_allow_html=True)
 
@@ -181,7 +181,7 @@ with col3:
 
 with col4:
     if st.button("", key="btn_suggest"):
-        click_prompt = f"Show me top landmarks, hidden spots, and sightseeing items near: {st.session_state.current_destination}"
+        click_prompt = f"Show me top landmarks, unique highlights, and sightseeing items near: {st.session_state.current_destination}"
         st.session_state.messages.append({"role": "user", "content": f"🔮 Explore Sights near **{st.session_state.current_destination}**"})
     st.markdown('<div class="feature-card card-white" style="margin-top: -55px;"><div><div class="card-title">Not sure?</div><div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div></div><div style="font-size: 3rem; text-align: right;">🔮</div></div>', unsafe_allow_html=True)
 
@@ -214,83 +214,4 @@ try:
 except Exception:
     st.session_state.agent = None
 
-# Wrap chat viewport layout container
-st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-
-# Render conversation logs
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-chat_input_val = st.chat_input("Type a destination... (e.g., America, Arunachalam, Hanamkonda)")
-user_input = click_prompt if click_prompt else chat_input_val
-
-# If the user typed a raw destination into the bar, update our active destination tracking parameter
-if chat_input_val:
-    # Basic logic processing layer to cleanly isolate location noun chains from sentences
-    stop_phrases = ["plan a trip to", "hotels in", "flights to", "travel to", "go to", "weather in"]
-    cleaned_dest = chat_input_val.lower()
-    for phrase in stop_phrases:
-        cleaned_dest = cleaned_dest.replace(phrase, "")
-    
-    words = [w.strip("?,.¡!").capitalize() for w in cleaned_dest.split()]
-    if words:
-        st.session_state.current_destination = " ".join(words)
-
-    st.session_state.messages.append({"role": "user", "content": chat_input_val})
-    with st.chat_message("user"):
-        st.markdown(chat_input_val)
-
-# --- 6. CORE LOGIC PROCESSOR NODE ---
-if user_input:
-    is_weather_query = any(k in user_input.lower() for k in ["weather", "temp", "temperature", "forecast"])
-
-    with st.chat_message("assistant"):
-        if is_weather_query:
-            st.markdown(f"### ☀️ {st.session_state.current_destination} 6-Day Visual Forecast Matrix")
-            matrix_slot = st.empty()
-            matrix_slot.info(f"🔄 Connecting with weather satellite tools for {st.session_state.current_destination}...")
-            
-            st.markdown("---")
-            st.markdown(f"### 🚨 1-Second Heatwave Action Protocols ({st.session_state.current_destination})")
-            st.markdown("* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay completely indoors.")
-            st.markdown("* 💧 **Hydration Matrix:** Drink water or electrolyte solutions every 20 minutes.")
-            st.markdown("* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose cotton clothing.")
-
-            if st.session_state.agent is None:
-                matrix_slot.warning("⚠️ All listed API keys are exhausted. Please supply an active token inside your panel.")
-            else:
-                try:
-                    result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
-                    answer = str(result["messages"][-1].content)
-                    
-                    matrix_slot.markdown(
-                        "| Day | Condition | Temp (Low / High) | Rain % |\n"
-                        "| :--- | :---: | :---: | :---: |\n"
-                        "| **Sun** (Today) | ☀️ *Sunny / Extreme Heat* | 33°C / **43°C** | 0% |\n"
-                        "| **Mon** | ☀️ *Intense Sun Exposure* | 32°C / **43°C** | 5% |\n"
-                        "| **Tue** | 🌦️ *Passing Afternoon Clouds* | 32°C / **41°C** | 15% |\n"
-                        "| **Wed** | ☀️ *Clear / High Heat* | 32°C / **42°C** | 5% |\n"
-                        "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
-                        "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |\n"
-                        "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |"
-                    )
-                except Exception:
-                    matrix_slot.warning("⚠️ Connected API tokens out of query calls limit.")
-            
-            st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {st.session_state.current_destination}."})
-
-        else:
-            if st.session_state.agent is None:
-                st.error("⚠️ Secrets Configuration Error: All listed API keys are invalid or empty.")
-            else:
-                with st.spinner("Processing expert travel logic..."):
-                    try:
-                        result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
-                        answer = str(result["messages"][-1].content)
-                        st.markdown(answer)
-                        st.session_state.messages.append({"role": "assistant", "content": answer})
-                    except Exception:
-                        st.error("⚠️ API Request Blocked: Your listed tokens have exhausted their parameters. Update your backend secret strings.")
-
-st.markdown('</div>', unsafe_allow_html=True)
+# Wrap chat viewport
