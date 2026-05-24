@@ -13,15 +13,9 @@ st.set_page_config(page_title="Free AI Travel Agent", layout="wide", initial_sid
 # --- 2. Premium UI Design & Layout Injector ---
 st.markdown("""
     <style>
-    /* Precision Color-Matched Background Styling from Screenshot (93) */
+    /* Global App Background Styling */
     .stApp {
-        background: radial-gradient(
-            circle at 15% 15%, 
-            #fee2e2 0%,    
-            #fae8ff 35%,   
-            #f5f3ff 65%,   
-            #e0f2fe 100%   
-        ) !important;
+        background: linear-gradient(135deg, #fce7f3 0%, #fae8ff 50%, #e0f2fe 100%);
         color: #1e293b;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
@@ -99,7 +93,7 @@ st.markdown("""
     /* Chat Message Interface Formatting */
     .chat-container {
         max-width: 850px;
-        margin: 2rem auto 5rem auto;
+        margin: 0 auto 5rem auto;
         padding: 1rem;
     }
     .stChatMessage {
@@ -110,16 +104,27 @@ st.markdown("""
         padding: 1rem !important;
     }
     
-    /* Fixed Floating Input Bar Force Lock System */
+    /* State Prompt Alert Box Styling */
+    .state-prompt {
+        background-color: rgba(255, 255, 255, 0.85);
+        border-left: 5px solid #ea580c;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+    
+    /* Reposition Floating Input Bar to Screen Bottom */
     div[data-testid="stChatInput"] {
-        position: fixed !important;
-        bottom: 20px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        width: 100% !important;
-        max-width: 850px !important;
-        z-index: 999999 !important;
-        padding: 0 1rem !important;
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 850px;
+        z-index: 99;
+        padding: 0 1rem;
     }
     div[data-testid="stChatInput"] textarea {
         background-color: white !important;
@@ -136,11 +141,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize persistent destination trackers silently in memory
+# Initialize interactive state parameters inside memory storage
+if "active_mode" not in st.session_state:
+    st.session_state.active_mode = "General"  
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "current_destination" not in st.session_state:
-    st.session_state.current_destination = "" 
 
 # --- 3. Render Top Branding Hero Content ---
 st.markdown("""
@@ -148,97 +153,178 @@ st.markdown("""
     <div class="main-title">Begin Your Next Adventure 🪂</div>
     <div class="sub-title">
         Hi! I'm your AI Trip Partner, here to make trip planning easy. Share your travel details, 
-        and I'll make your ideal plan! Happy Travels! ✈️
+        and I'll make your ideal plan! Happy Travels! ✈️<br>
+        <span style="font-size: 0.9rem; color: #64748b;">Start by choosing priority service or just describing your needs below!</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Latch variable for monitoring button selections
-click_prompt = ""
-
-# --- 4. Render Service Display Cards System ---
-st.markdown("""
-<p style="text-align:center; color:#64748b; margin-top:-1rem; margin-bottom:2rem;">Start by choosing priority service or just describing your needs below!</p>
-""", unsafe_allow_html=True)
-
+# --- 4. Render Service Display Cards via Clickable Columns System ---
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    if st.button("", key="btn_itinerary"):
-        target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
-        click_prompt = f"Build a comprehensive travel itinerary layout for: {target}"
-    st.markdown('<div class="feature-card card-yellow" style="margin-top: -55px;"><div><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences and days.</div></div><div style="font-size: 3rem; text-align: right;">📍</div></div>', unsafe_allow_html=True)
+    card1 = st.button("", key="btn_itinerary")
+    st.markdown("""
+    <div class="feature-card card-yellow" style="margin-top: -55px;">
+        <div>
+            <div class="card-title">Build Itinerary</div>
+            <div class="card-desc">Tailored completely for your preferences and days.</div>
+        </div>
+        <div style="font-size: 3rem; text-align: right;">📍</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if card1:
+        st.session_state.active_mode = "Itinerary"
+        st.session_state.messages.append({"role": "assistant", "content": "🔮 **Itinerary Mode Activated:** Where would you like to plan your journey, and for how many days?"})
 
 with col2:
-    if st.button("", key="btn_flights"):
-        target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
-        click_prompt = f"Find flight travel route options, tracking deals, airline carriers, and pricing structures for: {target}"
-    st.markdown('<div class="feature-card card-blue-light" style="margin-top: -55px;"><div><div class="card-title">Find Flights</div><div class="card-desc">Smart deals tracked across multiple global sources.</div></div><div style="font-size: 3rem; text-align: right;">📅</div></div>', unsafe_allow_html=True)
+    card2 = st.button("", key="btn_flights")
+    st.markdown("""
+    <div class="feature-card card-blue-light" style="margin-top: -55px;">
+        <div>
+            <div class="card-title">Find Flights</div>
+            <div class="card-desc">Smart deals tracked across multiple global sources.</div>
+        </div>
+        <div style="font-size: 3rem; text-align: right;">📅</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if card2:
+        st.session_state.active_mode = "Flights"
+        st.session_state.messages.append({"role": "assistant", "content": "✈️ **Flight Search Mode Activated:** Please specify your departure city, destination, and ideal travel dates/budget."})
 
 with col3:
-    if st.button("", key="btn_hotels"):
-        target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
-        click_prompt = f"Find a detailed budget hotel matrix with choices, rates, and features for destination: {target}"
-    st.markdown('<div class="feature-card card-blue-dark" style="margin-top: -55px;"><div><div class="card-title">Find Hotels</div><div class="card-desc">Perfect accommodation metrics matched to your needs.</div></div><div style="font-size: 3rem; text-align: right;">🏨</div></div>', unsafe_allow_html=True)
+    card3 = st.button("", key="btn_hotels")
+    st.markdown("""
+    <div class="feature-card card-blue-dark" style="margin-top: -55px;">
+        <div>
+            <div class="card-title">Find Hotels</div>
+            <div class="card-desc">Perfect accommodation metrics matched to your needs.</div>
+        </div>
+        <div style="font-size: 3rem; text-align: right;">🏨</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if card3:
+        st.session_state.active_mode = "Hotels"
+        st.session_state.messages.append({"role": "assistant", "content": "🏨 **Hotel Matrix Mode Activated:** Which location are you traveling to, and what is your target budget per night?"})
 
 with col4:
-    if st.button("", key="btn_suggest"):
-        target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
-        click_prompt = f"Show me top landmarks, unique highlights, and sightseeing items near: {target}"
-    st.markdown('<div class="feature-card card-white" style="margin-top: -55px;"><div><div class="card-title">Not sure?</div><div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div></div><div style="font-size: 3rem; text-align: right;">🔮</div></div>', unsafe_allow_html=True)
+    card4 = st.button("", key="btn_suggest")
+    st.markdown("""
+    <div class="feature-card card-white" style="margin-top: -55px;">
+        <div>
+            <div class="card-title">Not sure?</div>
+            <div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div>
+        </div>
+        <div style="font-size: 3rem; text-align: right;">🔮</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if card4:
+        st.session_state.active_mode = "General"
+        st.session_state.messages.append({"role": "assistant", "content": "👋 Tell me what kind of trip you want (e.g., spiritual, beach, mountains), and I'll recommend the best places!"})
 
-# --- 5. RENDER CHAT INTERFACE & POSITION BOX ---
+# --- 5. Extract Multi-Key Verification Tokens Pool Safely ---
+keys_list = get_keys_pool()
+
+@st.cache_resource
+def load_data(_key): 
+    os.environ["GOOGLE_API_KEY"] = _key
+    base_path = os.path.dirname(__file__)
+    data_folder = os.path.join(base_path, "data", "raw")
+    all_pages = []
+    if os.path.exists(data_folder):
+        files = [f for f in os.listdir(data_folder) if f.lower().endswith('.pdf')]
+        for f in files:
+            file_path = os.path.join(data_folder, f)
+            try:
+                loader = PyPDFLoader(file_path)
+                all_pages.extend(loader.load_and_split())
+            except Exception:
+                continue
+    if all_pages:
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+        return FAISS.from_documents([all_pages[0]], embeddings)
+    return None
+
+def safe_vector_search(_query):
+    if not keys_list:
+        return ""
+    for current_key in keys_list:
+        try:
+            os.environ["GOOGLE_API_KEY"] = current_key
+            vector_db = load_data(current_key)
+            if vector_db:
+                docs = vector_db.similarity_search(_query, k=2) 
+                return "\n".join([d.page_content for d in docs])
+        except Exception:
+            continue
+    return ""
+
+try:
+    if "agent" not in st.session_state or st.session_state.agent is None:
+        st.session_state.agent = get_agent()
+except Exception:
+    st.session_state.agent = None
+
+# Wrap chat container for spacing control
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 
+# Visual banner explaining the active context window state to the user
+if st.session_state.active_mode != "General":
+    st.markdown(f'<div class="state-prompt">📍 Custom Flow Engaged: Providing details for {st.session_state.active_mode} search below...</div>', unsafe_allow_html=True)
+
+# Render active layout chat items from history
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-chat_input_val = st.chat_input("Type your travel needs here...")
+# Catch explicit message string input from the bottom bar
+placeholder_text = "Type your needs..."
+if st.session_state.active_mode == "Hotels":
+    placeholder_text = "Enter destination and budget (e.g., America, budget $150/night)..."
+elif st.session_state.active_mode == "Flights":
+    placeholder_text = "Enter flight route (e.g., Hyderabad to America budget ₹60,000)..."
 
-# Process input capturing without throwing st.rerun loop deadlocks
-user_input = ""
-if click_prompt:
-    user_input = click_prompt
-    st.session_state.messages.append({"role": "user", "content": click_prompt})
-elif chat_input_val:
-    user_input = chat_input_val
-    st.session_state.messages.append({"role": "user", "content": chat_input_val})
-    
-    # Extract destination updates seamlessly on the fly
-    stop_phrases = ["plan a trip to", "hotels in", "flights to", "travel to", "go to", "weather in", "forecast for"]
-    cleaned_dest = chat_input_val.lower()
-    for phrase in stop_phrases:
-        cleaned_dest = cleaned_dest.replace(phrase, "")
-    words = [w.strip("?,.¡!").capitalize() for w in cleaned_dest.split() if w.strip()]
-    if words and not any(w.lower() in ["weather", "forecast", "temperature", "temp", "climate"] for w in words):
-        st.session_state.current_destination = " ".join(words)
+user_input = st.chat_input(placeholder_text)
 
-# --- 6. BACKGROUND ENGINE CALL EXECUTION NODE ---
+# --- 6. Execution Processing Layer ---
 if user_input:
-    # Force a fresh render of the newly added user text bubble right away
+    processed_prompt = user_input
+    if st.session_state.active_mode == "Hotels" and "hotel" not in user_input.lower():
+        processed_prompt = f"Find a detailed budget hotel matrix with options and estimated pricing in: {user_input}"
+    elif st.session_state.active_mode == "Flights" and "flight" not in user_input.lower():
+        processed_prompt = f"Find flight route details, tracking deals, and pricing structures for: {user_input}"
+    elif st.session_state.active_mode == "Itinerary" and "itinerary" not in user_input.lower():
+        processed_prompt = f"Build a comprehensive travel itinerary layout for: {user_input}"
+
+    st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    keys_list = get_keys_pool()
-    live_agent = get_agent()
-
-    input_words = [w.strip("?,.¡!").lower() for w in user_input.split()]
-    weather_keywords = ["weather", "temp", "temperature", "forecast", "climate"]
-    is_weather_query = any(keyword in input_words for keyword in weather_keywords)
+    is_weather_query = any(k in user_input.lower() for k in ["weather", "temp", "temperature", "forecast"])
 
     with st.chat_message("assistant"):
         if is_weather_query:
-            loc = st.session_state.current_destination if st.session_state.current_destination else "Requested Location"
-            st.markdown(f"### ☀️ {loc} 6-Day Visual Forecast Matrix")
+            stop_words = ["weather", "temp", "temperature", "forecast", "in", "at", "for", "of", "what", "is", "the", "how", "like"]
+            clean_words = [w.strip("?,.¡!").capitalize() for w in user_input.split() if w.lower() not in stop_words]
+            target_district = " ".join(clean_words) if clean_words else "Requested Destination"
+
+            st.markdown(f"### ☀️ {target_district} 6-Day Visual Forecast Matrix")
             matrix_slot = st.empty()
+            matrix_slot.info(f"🔄 Connecting with weather satellite tools for {target_district}...")
             
-            if live_agent is None:
-                matrix_slot.error("⚠️ API Request Blocked: Your listed tokens have exhausted their parameters. Update your backend secret strings.")
+            st.markdown("---")
+            st.markdown(f"### 🚨 1-Second Heatwave Action Protocols ({target_district})")
+            st.markdown("* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay completely indoors.")
+            st.markdown("* 💧 **Hydration Matrix:** Drink water or electrolyte solutions every 20 minutes.")
+            st.markdown("* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose cotton clothing.")
+
+            if st.session_state.agent is None:
+                matrix_slot.warning("⚠️ All listed API keys are exhausted. Please supply an active token inside your panel.")
             else:
                 try:
-                    result = live_agent.invoke({"messages": [("user", user_input)]})
+                    result = st.session_state.agent.invoke({"messages": [("user", processed_prompt)]})
                     answer = str(result["messages"][-1].content)
+                    
                     matrix_slot.markdown(
                         "| Day | Condition | Temp (Low / High) | Rain % |\n"
                         "| :--- | :---: | :---: | :---: |\n"
@@ -250,21 +336,23 @@ if user_input:
                         "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |\n"
                         "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |"
                     )
-                    st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {loc}."})
                 except Exception:
-                    matrix_slot.error("⚠️ Connected API tokens out of query calls limit.")
+                    matrix_slot.warning("⚠️ Connected API tokens out of query calls limit.")
+            
+            st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {target_district}."})
 
         else:
-            if live_agent is None:
-                st.error("⚠️ API Request Blocked: Your listed tokens have exhausted their parameters. Update your backend secret strings.")
+            if st.session_state.agent is None:
+                st.error("⚠️ Secrets Configuration Error: All listed API keys are invalid or empty.")
             else:
                 with st.spinner("Processing expert travel logic..."):
                     try:
-                        result = live_agent.invoke({"messages": [("user", user_input)]})
+                        result = st.session_state.agent.invoke({"messages": [("user", processed_prompt)]})
                         answer = str(result["messages"][-1].content)
                         st.markdown(answer)
                         st.session_state.messages.append({"role": "assistant", "content": answer})
+                        st.session_state.active_mode = "General"
                     except Exception:
-                        st.error("⚠️ API Request Blocked: The model engine encountered an operational timeout limit.")
+                        st.error("⚠️ API Request Blocked: Your listed tokens have exhausted their parameters. Update your backend secret strings.")
 
-st.markdown("</div>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
