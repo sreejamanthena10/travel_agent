@@ -8,68 +8,91 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 
-# --- 1. Page Configuration & Premium Styling ---
-st.set_page_config(page_title="AI Travel Concierge", layout="centered")
+# --- 1. Page Configuration & Professional Styling ---
+st.set_page_config(page_title="AeroConcierge AI", layout="centered")
 
-# Custom CSS Injection for high-end UI/UX, premium color combinations, and fade-in animations
+# Custom CSS Injection for an ultra-premium enterprise UI/UX
 st.markdown("""
     <style>
-    /* Main Background & Fonts */
+    /* Main Canvas Background & Global Reset */
     .stApp {
-        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        background: linear-gradient(135deg, #0b0f19 0%, #111827 50%, #1e1b4b 100%);
         color: #f8fafc;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
-    /* Global Fade-In Animation */
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+    /* Advanced Blur-to-Focus Fade-In Animation */
+    @keyframes premiumFadeIn {
+        0% { 
+            opacity: 0; 
+            filter: blur(8px);
+            transform: translateY(15px); 
+        }
+        100% { 
+            opacity: 1; 
+            filter: blur(0px);
+            transform: translateY(0); 
+        }
     }
     .animated-container {
-        animation: fadeIn 0.8s ease-out forwards;
+        animation: premiumFadeIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     
-    /* Professional Header Styling */
+    /* High-End Enterprise Header Design */
     .main-header {
-        font-size: 2.8rem;
+        font-size: 3rem;
         font-weight: 800;
-        background: linear-gradient(90deg, #38bdf8 0%, #a855f7 100%);
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        background: linear-gradient(135deg, #ffffff 30%, #38bdf8 70%, #818cf8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-align: center;
-        margin-bottom: 0.5rem;
-        letter-spacing: -0.05em;
-    }
-    .sub-header {
-        font-size: 1.1rem;
-        color: #94a3b8;
-        text-align: center;
-        margin-bottom: 2rem;
+        margin-top: 1rem;
+        margin-bottom: 0.2rem;
+        transition: all 0.5s ease;
     }
     
-    /* Glassmorphic Chat Box and Styling Elements */
+    /* Subtitle Accent Line and Text */
+    .sub-header {
+        font-size: 0.95rem;
+        color: #94a3b8;
+        text-align: center;
+        margin-bottom: 2.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        font-weight: 500;
+    }
+    .header-divider {
+        height: 2px;
+        width: 60px;
+        background: linear-gradient(90deg, #38bdf8, #818cf8);
+        margin: 0 auto 1.5rem auto;
+        border-radius: 2px;
+    }
+    
+    /* Clean Styling Adjustments for Chat Interface */
     input {
-        background-color: #1e293b !important;
+        background-color: #1f2937 !important;
         color: #f8fafc !important;
-        border: 1px solid #334155 !important;
+        border: 1px solid #374151 !important;
         border-radius: 8px !important;
     }
     .stAlert {
-        background-color: rgba(30, 41, 59, 0.7) !important;
-        border: 1px solid #475569 !important;
+        background-color: rgba(17, 24, 39, 0.8) !important;
+        border: 1px solid #374151 !important;
         color: #f8fafc !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. Main Premium App Layout ---
+# --- 2. Main Premium App Layout Banner ---
 st.markdown('<div class="animated-container">', unsafe_allow_html=True)
-st.markdown('<h1 class="main-header">✈️ AI TRAVEL CONCIERGE</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Your documents, web resources, and real-time environment data connected seamlessly.</p>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">AeroConcierge AI</h1>', unsafe_allow_html=True)
+st.markdown('<div class="header-divider"></div>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Autonomous Travel Intelligence & Verified Vector RAG Platform</p>', unsafe_allow_html=True)
 
 # --- 3. Secure Production Key Injection ---
-# Pulls directly from your secure Streamlit Dashboard Cloud settings secretly
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
@@ -117,8 +140,6 @@ try:
         st.session_state.agent = get_cached_agent(api_key)
 
     if vector_db:
-        st.write("✨ Intelligence matrix fully synchronized. Ask me anything!")
-
         # Render chat history with smooth styles
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
