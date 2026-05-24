@@ -71,10 +71,14 @@ st.markdown('<h1 class="main-header">AeroConcierge AI</h1>', unsafe_allow_html=T
 st.markdown('<div class="header-line"></div>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Autonomous Travel Intelligence & Verified Vector RAG Platform</p>', unsafe_allow_html=True)
 
-if "GEMINI_API_KEY" in st.secrets:
+# FIXED: Multi-Key Array Secret Verification Checkpoint
+api_key = None
+if "GEMINI_API_KEYS" in st.secrets and len(st.secrets["GEMINI_API_KEYS"]) > 0:
+    api_key = st.secrets["GEMINI_API_KEYS"][0] # Use primary key for core embedding setups
+elif "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    st.error("⚠️ Environment Configuration Missing.")
+    st.error("⚠️ Environment Configuration Missing: Please verify 'GEMINI_API_KEYS' array exists in your Streamlit Advanced Secrets panel.")
     st.stop()
 
 @st.cache_resource
@@ -99,7 +103,6 @@ def get_cached_agent(_key):
     os.environ["GOOGLE_API_KEY"] = _key
     return get_agent()
 
-# FIXED: Re-added the missing cached vector search function back into the file scope
 @st.cache_data
 def fast_vector_search(_query, _key):
     os.environ["GOOGLE_API_KEY"] = _key
@@ -121,14 +124,13 @@ try:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
 
-    user_input = st.chat_input("Inquire regarding itineraries or destination weather details...")
+    user_input = st.chat_input("Inquire regarding itineraries, global budgets, or local attractions...")
 
     if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.write(user_input)
 
-        # Safely calls the defined function above
         context = fast_vector_search(user_input, api_key)
         
         combined_prompt = (
@@ -140,6 +142,7 @@ try:
         )
 
         with st.chat_message("assistant"):
+            # Instantaneous pre-render check for explicit weather queries
             if any(keyword in user_input.lower() for keyword in ["weather", "temp", "temperature", "forecast", "karimnagar"]):
                 target_district = "Karimnagar"
                 for word in user_input.split():
@@ -182,8 +185,9 @@ try:
                 st.session_state.messages.append({"role": "assistant", "content": full_saved_response})
 
             else:
-                with st.spinner("Processing travel logic..."):
-                    result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
+                # Global trip itineraries and local sightseeing requests process straight to agent.py
+                with st.spinner("Processing expert travel logic..."):
+                    result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
                     answer = str(result["messages"][-1].content)
                     st.write(answer)
                     st.session_state.messages.append({"role": "assistant", "content": answer})
