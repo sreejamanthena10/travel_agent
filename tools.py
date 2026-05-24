@@ -6,24 +6,18 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.tools import DuckDuckGoSearchRun
 
-# Initialize the free DuckDuckGo Search Engine Utility
-try:
-    search_engine = DuckDuckGoSearchRun()
-except Exception:
-    search_engine = None
-
 @tool
 def google_travel_search(query: str) -> str:
     """
     Searches the live web for global travel information, flight details, hotel pricing, 
     and famous landmark updates all over the world. Use this for general global destinations.
     """
-    if search_engine:
-        try:
-            return str(search_engine.run(query))
-        except Exception as e:
-            return f"Live search temporarily unavailable: {str(e)}"
-    return "Search infrastructure uninitialized."
+    try:
+        # Dynamically instantiate fresh on execution to prevent uninitialized state bugs
+        search_engine = DuckDuckGoSearchRun()
+        return str(search_engine.run(query))
+    except Exception as e:
+        return f"Live search temporarily unavailable: {str(e)}"
 
 @tool
 def search_local_travel_documents(query: str) -> str:
