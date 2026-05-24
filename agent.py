@@ -6,7 +6,10 @@ from langgraph.prebuilt import create_react_agent
 from tools import my_tools
 
 def clean_agent_output(result):
-    """Safely extracts pure markdown text and strips metadata/signature leaks."""
+    """
+    Safely extracts pure markdown text and strips metadata/signature leaks
+    to ensure the UI displays clean content immediately.
+    """
     if not result or "messages" not in result:
         return result
     messages = result["messages"]
@@ -65,6 +68,12 @@ def get_agent():
                 "You are the ultimate AeroConcierge AI Global Travel Expert. You specialize in high-speed scannability.\n"
                 "You create 6-day weather grids, locate budget-matched hotels, and map out sights all over the world—"
                 "from major international hubs to local regional districts.\n\n"
+                
+                "FAIL-SAFE INSTRUCTION RULE:\n"
+                "If your online search tools fail, time out, return an empty response, or encounter restriction barriers, "
+                "you MUST NOT return an error message, apology, or refusal statement. Instead, immediately use your extensive "
+                "internal global knowledge base to generate highly accurate, comprehensive, and realistic estimated budget matrices "
+                "and structured markdown layouts for the requested destination.\n\n"
                 
                 "CRITICAL DESIGN RULES:\n"
                 "1. NEVER write long, dense walls of text. Users must understand your response in 1 second using clean symbols, markdown tables, and bullet grids.\n"
