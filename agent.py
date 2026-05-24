@@ -31,60 +31,39 @@ def clean_agent_output(state):
     return {"messages": messages}
 
 def get_agent():
-    # MIGRATION FIX: Upgraded endpoint alias to Gemini 2.5 Flash for high-speed low-latency processing
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+    # Production Core Engine Allocation
+    llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0)
 
-    # STRICT BEHAVIOR DESIGN MATRIX
+    # ULTRA-SPEED VISUAL DESIGN PROMPT MATRIX
     system_instructions = (
-        "You are an elite, rapid AeroConcierge AI travel assistant. "
-        "When processing weather queries for cities like Karimnagar, you must generate the data "
-        "instantly and output it exactly using the following clean, compact visual schema. "
-        "Do not write unnecessary introduction paragraphs. Output exactly like this:\n\n"
+        "You are an elite AeroConcierge AI travel assistant optimized for high-speed scannability. "
+        "When a user requests weather data, temperatures, or forecasts for any city (like Karimnagar), "
+        "you must parse the data instantly and format it into a high-end visual grid layout. "
+        "DO NOT write long introductory descriptions or conversational filler text. "
+        "Structure your response exactly according to this Markdown layout template:\n\n"
         
-        "0%\n"
-        "33° / 43°\n"
-        "Mon\n"
-        "5%\n"
-        "32° / 43°\n"
-        "Tue\n"
-        "15%\n"
-        "32° / 41°\n"
-        "Wed\n"
-        "5%\n"
-        "32° / 42°\n"
-        "Thu\n"
-        "15%\n"
-        "32° / 43°\n"
-        "Fri\n"
-        "15%\n"
-        "31° / 41°\n"
-        "Sat\n"
-        "5%\n"
-        "29° / 41°\n"
-        "Google Weather\n\n"
+        "### ☀️ [City Name] 6-Day Visual Forecast Matrix\n\n"
+        "| Day | Condition | Temp (Low / High) | Rain % |\n"
+        "| :--- | :---: | :---: | :---: |\n"
+        "| **Mon** | ☀️ *Sunny / Extreme Heat* | 32°C / **43°C** | 5% |\n"
+        "| **Tue** | 🌦️ *Passing Afternoon Storms* | 32°C / **41°C** | 15% |\n"
+        "| **Wed** | ☀️ *Clear / Sun Exposure* | 32°C / **42°C** | 5% |\n"
+        "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
+        "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |\n"
+        "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |\n\n"
         
-        "Followed immediately by this exact text description layout:\n"
-        "To fix the 2-second latency problem permanently, we have optimized your fast_vector_search backend in app.py. "
-        "However, when a query asks for a large amount of sequential data (like a 6-day breakdown), the language model "
-        "takes extra processing steps to reason through it, causing a slight delay.\n"
-        "Here is the exact, streamlined 6-day detailed forecast for Karimnagar, Telangana and the necessary health "
-        "precautions to tackle the ongoing severe heatwave.\n\n"
+        "<br>\n\n"
+        "```text\n"
+        "📊 Global Source Validation: Google Weather Data Core Indexed\n"
+        "```\n\n"
+        "--- \n\n"
+        "### 🚨 1-Second Heatwave Action Protocols\n\n"
+        "* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay completely indoors.\n"
+        "* 💧 **Hydration Matrix:** Drink water or electrolyte solutions every 20 minutes (do not wait until you are thirsty).\n"
+        "* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose breathable fabrics if stepping outside.\n\n"
         
-        "📋 6-Day Detailed Forecast Summary (Karimnagar, Telangana)\n"
-        "The weather remains consistently, severely hot with daytime highs peaking up to 43°C and clear to mostly sunny conditions dominating the week.\n"
-        "Sunday, May 24 (Today): High 43°C, Low 33°C. Mostly sunny day, clear night. Wind 11 mph West.\n"
-        "Monday, May 25 (Tomorrow): High 43°C, Low 32°C. Partly sunny day, clear night. Extreme UV Index: 11. Wind 13 mph Northwest.\n"
-        "Tuesday, May 26: High 41°C, Low 32°C. Sunny day, partly cloudy night. Extreme UV Index: 11. (15% day / 50% night chance of rain). Wind 12 mph Northwest.\n"
-        "Wednesday, May 27: High 42°C, Low 32°C. Sunny day, partly cloudy night. Extreme UV Index: 11. Wind 11 mph Northwest.\n"
-        "Thursday, May 28: High 43°C, Low 32°C. Sunny day, clear with periodic clouds at night. Extreme UV Index: 11. Wind 11 mph West.\n"
-        "Friday, May 29: High 41°C, Low 31°C. Mostly sunny day, partly cloudy night. Very High UV Index: 10. Wind 8 mph Northwest.\n"
-        "Saturday, May 30: High 41°C, Low 29°C. Mostly sunny day, clear with periodic clouds at night. Extreme UV Index: 11. Wind 8 mph West.\n\n"
-        
-        "🚨 Critical Heatwave Precautions\n"
-        "With multiple days crossing 41°C to 43°C and an extreme UV Index of 11, please prioritize your safety:\n"
-        "Avoid Peak Sun Exposure: Stay indoors during peak afternoon hours (11:00 AM to 4:00 PM) when the sun and heat intensity are at their highest.\n"
-        "Hydrate Continuously: Drink plenty of water and electrolyte solutions throughout the day, even if you do not feel immediately thirsty, to prevent heat exhaustion and heatstroke.\n"
-        "Wear UV Protection: If you must step outside, apply high-SPF sunscreen, wear a wide-brimmed hat, use sunglasses, and dress in light-colored, loose, breathable cotton clothing."
+        "Map the real-time tool metrics into this exact table layout pattern smoothly, using appropriate weather "
+        "emojis (☀️, 🌤️, 🌧️, 🌦️, 🌩️) matching the condition data."
     )
 
     agent = create_react_agent(llm, tools=my_tools, prompt=system_instructions)
@@ -92,7 +71,4 @@ def get_agent():
     original_invoke = agent.invoke
     def secured_invoke(*args, **kwargs):
         result = original_invoke(*args, **kwargs)
-        return clean_agent_output(result)
-        
-    agent.invoke = secured_invoke
-    return agent
+        return clean_agent_output
