@@ -214,20 +214,16 @@ def load_data(_key):
         return FAISS.from_documents([all_pages[0]], embeddings)
     return None
 
-try:
-    if "agent" not in st.session_state or st.session_state.agent is None:
-        st.session_state.agent = get_agent()
-except Exception:
-    st.session_state.agent = None
+# CRITICAL HOTFIX: DITCH SESSION_STATE FOR THE AGENT. BUILD IT FRESH USING THE UPDATED KEY POOL EVERY RUN.
+live_agent = get_agent()
 
-# Safely open container element via standard HTML string injection
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-chat_input_val = st.chat_input("Type your needs... (e.g., plan a trip to America, weather in Goa)")
+chat_input_val = st.chat_input("Type your travel needs here...")
 user_input = click_prompt if click_prompt else chat_input_val
 
 # Extract locations typed directly into the input field to update memory silently
@@ -264,11 +260,11 @@ if user_input:
             st.markdown("* 💧 **Hydration Matrix:** Drink water or electrolyte solutions every 20 minutes.")
             st.markdown("* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose cotton clothing.")
 
-            if st.session_state.agent is None:
+            if live_agent is None:
                 matrix_slot.warning("⚠️ All listed API keys are exhausted. Please supply an active token inside your panel.")
             else:
                 try:
-                    result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
+                    result = live_agent.invoke({"messages": [("user", user_input)]})
                     answer = str(result["messages"][-1].content)
                     
                     matrix_slot.markdown(
@@ -288,17 +284,16 @@ if user_input:
             st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {loc}."})
 
         else:
-            if st.session_state.agent is None:
+            if live_agent is None:
                 st.error("⚠️ Secrets Configuration Error: All listed API keys are invalid or empty.")
             else:
                 with st.spinner("Processing expert travel logic..."):
                     try:
-                        result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
+                        result = live_agent.invoke({"messages": [("user", user_input)]})
                         answer = str(result["messages"][-1].content)
                         st.markdown(answer)
                         st.session_state.messages.append({"role": "assistant", "content": answer})
                     except Exception:
                         st.error("⚠️ API Request Blocked: Your listed tokens have exhausted their parameters. Update your backend secret strings.")
 
-# Clean wrapper termination
 st.markdown("</div>", unsafe_allow_html=True)
