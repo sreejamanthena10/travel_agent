@@ -64,7 +64,7 @@ st.markdown('<h1 class="main-header">AeroConcierge AI</h1>', unsafe_allow_html=T
 st.markdown('<div class="header-line"></div>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Autonomous Travel Intelligence & Verified Vector RAG Platform</p>', unsafe_allow_html=True)
 
-# Extract keys cleanly from pool
+# Clean extract key strings list
 keys_list = get_keys_pool()
 
 @st.cache_resource
@@ -85,7 +85,7 @@ def load_data(_key):
     return None
 
 def safe_vector_search(_query):
-    """Searches vector storage using an active key from the pool."""
+    """Fallback vector search engine using active keys pool."""
     if not keys_list:
         return ""
     for current_key in keys_list:
@@ -102,13 +102,12 @@ def safe_vector_search(_query):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Fail-safe agent initialization to completely block raw crash messages
 try:
     st.session_state.agent = get_agent()
 except Exception:
     st.session_state.agent = None
 
-# Render message history
+# Render active layout session items
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
@@ -120,23 +119,20 @@ if user_input:
     with st.chat_message("user"):
         st.write(user_input)
 
-    # Completely separate weather calls from general trip/landmark requests
+    # Dynamic evaluation check string
     is_weather_query = any(k in user_input.lower() for k in ["weather", "temp", "temperature", "forecast"])
 
     with st.chat_message("assistant"):
         if is_weather_query:
-            # Dynamically extract whatever location string the user typed
-            target_district = "Requested Location"
-            words = [w.strip("?,.").capitalize() for w in user_input.split()]
-            known_places = ["Karimnagar", "Hanamkonda", "Warangal", "Hyderabad", "Goa", "Delhi", "Mumbai"]
-            for word in words:
-                if word in known_places:
-                    target_district = word
-                    break
+            # FIXED: REMOVED HARCODED PLACES ARRAY. Automatically filter phrase words out.
+            stop_words = ["weather", "temp", "temperature", "forecast", "in", "at", "for", "of", "what", "is", "the", "how", "like"]
+            clean_words = [w.strip("?,.¡!").capitalize() for w in user_input.split() if w.lower() not in stop_words]
+            
+            target_district = " ".join(clean_words) if clean_words else "Requested Destination"
 
             st.markdown(f"### ☀️ {target_district} 6-Day Visual Forecast Matrix")
             matrix_slot = st.empty()
-            matrix_slot.info("🔄 Connecting with weather satellite tools...")
+            matrix_slot.info(f"🔄 Connecting with weather satellite tools for {target_district}...")
             
             st.markdown("---")
             st.markdown(f"### 🚨 1-Second Heatwave Action Protocols ({target_district})")
@@ -144,10 +140,9 @@ if user_input:
             st.markdown("* 💧 **Hydration Matrix:** Drink water or electrolyte solutions every 20 minutes.")
             st.markdown("* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose cotton clothing.")
 
-            # Check if agent was created successfully
             if st.session_state.agent is None:
-                matrix_slot.warning("⚠️ All provided API keys are exhausted or invalid. Please check your plan details in Google AI Studio and provide a fresh API key.")
-                answer = "⚠️ System could not process request due to exhausted API quotas. Please update your keys string."
+                matrix_slot.warning("⚠️ All listed API keys are exhausted. Please supply an active token inside your panel.")
+                answer = "Quota limit barrier struck."
             else:
                 try:
                     result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
@@ -165,25 +160,24 @@ if user_input:
                         "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |"
                     )
                 except Exception:
-                    matrix_slot.warning("⚠️ All active API keys have run out of daily requests. Please update your Streamlit Secrets string with a fresh key.")
-                    answer = "API quota exceeded."
+                    matrix_slot.warning("⚠️ Connected API tokens out of query calls limit.")
+                    answer = "Quota limits exceeded."
             
             st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {target_district}."})
 
         else:
-            # Handles places near Hanamkonda, global hotel packages, and budget planning smoothly
+            # FIXED: REMOVED FORCED METHOD AND CONTEXT STUFFING BLOCKS. Passes pure text directly.
             if st.session_state.agent is None:
-                st.error("⚠️ System Key Error: All listed API keys have expired or are formatted wrong. Please paste a fresh key into your secrets panel.")
+                st.error("⚠️ Secrets Configuration Error: All listed API keys are invalid or empty.")
             else:
                 with st.spinner("Processing expert travel logic..."):
                     try:
-                        context = safe_vector_search(user_input)
-                        combined_prompt = f"Context:\n{context}\n\nQuestion: {user_input}"
-                        result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
+                        # Agent automatically chooses the right tool based on your question!
+                        result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
                         answer = str(result["messages"][-1].content)
                         st.write(answer)
                         st.session_state.messages.append({"role": "assistant", "content": answer})
                     except Exception:
-                        st.error("⚠️ API Request Blocked: The current key tier has run out of daily requests. Please provide a fresh key inside your Streamlit Dashboard panel.")
+                        st.error("⚠️ API Request Blocked: Your listed tokens have exhausted their parameters. Update your backend secret strings.")
 
 st.markdown('</div>', unsafe_allow_html=True)
