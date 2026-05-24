@@ -167,28 +167,24 @@ with col1:
     if st.button("", key="btn_itinerary"):
         target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
         click_prompt = f"Build a comprehensive travel itinerary layout for: {target}"
-        st.session_state.messages.append({"role": "user", "content": f"📍 Build full Itinerary for **{target}**"})
     st.markdown('<div class="feature-card card-yellow" style="margin-top: -55px;"><div><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences and days.</div></div><div style="font-size: 3rem; text-align: right;">📍</div></div>', unsafe_allow_html=True)
 
 with col2:
     if st.button("", key="btn_flights"):
         target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
         click_prompt = f"Find flight travel route options, tracking deals, airline carriers, and pricing structures for: {target}"
-        st.session_state.messages.append({"role": "user", "content": f"📅 Search Flights to **{target}**"})
     st.markdown('<div class="feature-card card-blue-light" style="margin-top: -55px;"><div><div class="card-title">Find Flights</div><div class="card-desc">Smart deals tracked across multiple global sources.</div></div><div style="font-size: 3rem; text-align: right;">📅</div></div>', unsafe_allow_html=True)
 
 with col3:
     if st.button("", key="btn_hotels"):
         target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
         click_prompt = f"Find a detailed budget hotel matrix with choices, rates, and features for destination: {target}"
-        st.session_state.messages.append({"role": "user", "content": f"🏨 Find Budget Hotels in **{target}**"})
     st.markdown('<div class="feature-card card-blue-dark" style="margin-top: -55px;"><div><div class="card-title">Find Hotels</div><div class="card-desc">Perfect accommodation metrics matched to your needs.</div></div><div style="font-size: 3rem; text-align: right;">🏨</div></div>', unsafe_allow_html=True)
 
 with col4:
     if st.button("", key="btn_suggest"):
         target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
         click_prompt = f"Show me top landmarks, unique highlights, and sightseeing items near: {target}"
-        st.session_state.messages.append({"role": "user", "content": f"🔮 Explore Sights near **{target}**"})
     st.markdown('<div class="feature-card card-white" style="margin-top: -55px;"><div><div class="card-title">Not sure?</div><div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div></div><div style="font-size: 3rem; text-align: right;">🔮</div></div>', unsafe_allow_html=True)
 
 # --- 5. RENDER CHAT INTERFACE & POSITION BOX ---
@@ -199,23 +195,31 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 chat_input_val = st.chat_input("Type your travel needs here...")
-user_input = click_prompt if click_prompt else chat_input_val
 
-if chat_input_val:
+# Process input capturing without throwing st.rerun loop deadlocks
+user_input = ""
+if click_prompt:
+    user_input = click_prompt
+    st.session_state.messages.append({"role": "user", "content": click_prompt})
+elif chat_input_val:
+    user_input = chat_input_val
+    st.session_state.messages.append({"role": "user", "content": chat_input_val})
+    
+    # Extract destination updates seamlessly on the fly
     stop_phrases = ["plan a trip to", "hotels in", "flights to", "travel to", "go to", "weather in", "forecast for"]
     cleaned_dest = chat_input_val.lower()
     for phrase in stop_phrases:
         cleaned_dest = cleaned_dest.replace(phrase, "")
-    
     words = [w.strip("?,.¡!").capitalize() for w in cleaned_dest.split() if w.strip()]
     if words and not any(w.lower() in ["weather", "forecast", "temperature", "temp", "climate"] for w in words):
         st.session_state.current_destination = " ".join(words)
 
-    st.session_state.messages.append({"role": "user", "content": chat_input_val})
-    st.rerun()
-
 # --- 6. BACKGROUND ENGINE CALL EXECUTION NODE ---
 if user_input:
+    # Force a fresh render of the newly added user text bubble right away
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
     keys_list = get_keys_pool()
     live_agent = get_agent()
 
@@ -240,13 +244,12 @@ if user_input:
                         "| :--- | :---: | :---: | :---: |\n"
                         "| **Sun** (Today) | ☀️ *Sunny / Extreme Heat* | 33°C / **43°C** | 0% |\n"
                         "| **Mon** | ☀️ *Intense Sun Exposure* | 32°C / **43°C** | 5% |\n"
-                        "| **Uni** | 🌦️ *Passing Afternoon Clouds* | 32°C / **41°C** | 15% |\n"
+                        "| **Tue** | 🌦️ *Passing Afternoon Clouds* | 32°C / **41°C** | 15% |\n"
                         "| **Wed** | ☀️ *Clear / High Heat* | 32°C / **42°C** | 5% |\n"
                         "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
                         "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |\n"
                         "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |"
                     )
-                    # FIXED: Cleanly closed out the f-string line layout without multi-line breakage gaps
                     st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {loc}."})
                 except Exception:
                     matrix_slot.error("⚠️ Connected API tokens out of query calls limit.")
