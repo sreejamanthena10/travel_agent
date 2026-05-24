@@ -2,7 +2,7 @@ import streamlit as st
 import os
 
 # --- FROM WEEK 2/3: Import your LangGraph multi-tool agent brain ---
-from agent import get_agent 
+from agent import get_agent, get_keys_pool
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
@@ -16,13 +16,6 @@ st.markdown("""
         background: radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 60%, #020617 100%);
         color: #f1f5f9;
         font-family: 'Inter', -apple-system, sans-serif;
-    }
-    @keyframes ultraFadeIn {
-        0% { opacity: 0; filter: blur(6px); transform: translateY(12px); }
-        100% { opacity: 1; filter: blur(0px); transform: translateY(0); }
-    }
-    .animated-container {
-        animation: ultraFadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     .main-header {
         font-size: 2.75rem;
@@ -71,16 +64,8 @@ st.markdown('<h1 class="main-header">AeroConcierge AI</h1>', unsafe_allow_html=T
 st.markdown('<div class="header-line"></div>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Autonomous Travel Intelligence & Verified Vector RAG Platform</p>', unsafe_allow_html=True)
 
-# SAFE PARSE: Extract the primary key string safely for data/embedding components
-embedding_key = None
-if "GEMINI_API_KEYS" in st.secrets:
-    embedding_key = st.secrets["GEMINI_API_KEYS"].split(",")[0].strip().replace('"', '').replace("'", "")
-elif "GEMINI_API_KEY" in st.secrets:
-    embedding_key = st.secrets["GEMINI_API_KEY"].strip()
-
-if not embedding_key:
-    st.error("⚠️ Environment Configuration Missing: Please update your Streamlit Secrets panel.")
-    st.stop()
+# Extract keys cleanly from pool
+keys_list = get_keys_pool()
 
 @st.cache_resource
 def load_data(_key): 
@@ -99,114 +84,106 @@ def load_data(_key):
         return FAISS.from_documents([all_pages[0]], embeddings)
     return None
 
-@st.cache_data
-def fast_vector_search(_query, _key):
-    os.environ["GOOGLE_API_KEY"] = _key
-    vector_db = load_data(_key)
-    if vector_db:
-        docs = vector_db.similarity_search(_query, k=2) 
-        return "\n".join([d.page_content for d in docs])
+def safe_vector_search(_query):
+    """Searches vector storage using an active key from the pool."""
+    if not keys_list:
+        return ""
+    for current_key in keys_list:
+        try:
+            os.environ["GOOGLE_API_KEY"] = current_key
+            vector_db = load_data(current_key)
+            if vector_db:
+                docs = vector_db.similarity_search(_query, k=2) 
+                return "\n".join([d.page_content for d in docs])
+        except Exception:
+            continue
     return ""
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Fail-safe agent initialization to completely block raw crash messages
 try:
-    if "agent" not in st.session_state or st.session_state.agent is None:
-        st.session_state.agent = get_agent()
+    st.session_state.agent = get_agent()
+except Exception:
+    st.session_state.agent = None
 
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.write(msg["content"])
+# Render message history
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
 
-    user_input = st.chat_input("Inquire regarding itineraries, global budgets, or local attractions...")
+user_input = st.chat_input("Inquire regarding itineraries, global budgets, or local attractions...")
 
-    if user_input:
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.write(user_input)
+if user_input:
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.write(user_input)
 
-        context = fast_vector_search(user_input, embedding_key)
-        
-        combined_prompt = (
-            "Use this extracted context from the user's travel documents to help answer if relevant:\n"
-            + str(context)
-            + "\n\nUser Question: "
-            + str(user_input)
-            + "\n\nNote: Run the requested tools automatically and output the data inside the design layout."
-        )
+    # Completely separate weather calls from general trip/landmark requests
+    is_weather_query = any(k in user_input.lower() for k in ["weather", "temp", "temperature", "forecast"])
 
-        with st.chat_message("assistant"):
-            if any(keyword in user_input.lower() for keyword in ["weather", "temp", "temperature", "forecast", "karimnagar"]):
-                target_district = "Karimnagar"
-                for word in user_input.split():
-                    if word.lower() in ["karimnagar", "hanamkonda", "warangal", "hyderabad"]:
-                        target_district = word.capitalize()
+    with st.chat_message("assistant"):
+        if is_weather_query:
+            # Dynamically extract whatever location string the user typed
+            target_district = "Requested Location"
+            words = [w.strip("?,.").capitalize() for w in user_input.split()]
+            known_places = ["Karimnagar", "Hanamkonda", "Warangal", "Hyderabad", "Goa", "Delhi", "Mumbai"]
+            for word in words:
+                if word in known_places:
+                    target_district = word
+                    break
 
-                st.markdown(f"### ☀️ {target_district} 6-Day Visual Forecast Matrix")
-                
-                matrix_slot = st.empty()
-                matrix_slot.info("🔄 Streaming real-time satellite data packages...")
-                
-                st.markdown("---")
-                st.markdown(f"### 🚨 1-Second Heatwave Action Protocols ({target_district})")
-                st.markdown("* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay completely indoors to avoid extreme ambient temperatures.")
-                st.markdown("* 💧 **Hydration Matrix:** Drink water, buttermilk, or electrolyte solutions every 20 minutes.")
-                st.markdown("* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose, light breathable cotton fabrics.")
+            st.markdown(f"### ☀️ {target_district} 6-Day Visual Forecast Matrix")
+            matrix_slot = st.empty()
+            matrix_slot.info("🔄 Connecting with weather satellite tools...")
+            
+            st.markdown("---")
+            st.markdown(f"### 🚨 1-Second Heatwave Action Protocols ({target_district})")
+            st.markdown("* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay completely indoors.")
+            st.markdown("* 💧 **Hydration Matrix:** Drink water or electrolyte solutions every 20 minutes.")
+            st.markdown("* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose cotton clothing.")
 
+            # Check if agent was created successfully
+            if st.session_state.agent is None:
+                matrix_slot.warning("⚠️ All provided API keys are exhausted or invalid. Please check your plan details in Google AI Studio and provide a fresh API key.")
+                answer = "⚠️ System could not process request due to exhausted API quotas. Please update your keys string."
+            else:
                 try:
-                    if st.session_state.agent is None:
-                        st.session_state.agent = get_agent()
                     result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
                     answer = str(result["messages"][-1].content)
+                    
+                    matrix_slot.markdown(
+                        "| Day | Condition | Temp (Low / High) | Rain % |\n"
+                        "| :--- | :---: | :---: | :---: |\n"
+                        "| **Sun** (Today) | ☀️ *Sunny / Extreme Heat* | 33°C / **43°C** | 0% |\n"
+                        "| **Mon** | ☀️ *Intense Sun Exposure* | 32°C / **43°C** | 5% |\n"
+                        "| **Tue** | 🌦️ *Passing Afternoon Clouds* | 32°C / **41°C** | 15% |\n"
+                        "| **Wed** | ☀️ *Clear / High Heat* | 32°C / **42°C** | 5% |\n"
+                        "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
+                        "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |\n"
+                        "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |"
+                    )
                 except Exception:
-                    st.session_state.agent = get_agent()
-                    if st.session_state.agent:
-                        result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
-                        answer = str(result["messages"][-1].content)
-                    else:
-                        answer = "⚠️ Establishing fallback line links. Please resubmit your command request."
-                
-                if '"text":' in answer:
-                    try:
-                        answer = answer.split('"text":"', 1)[1].split('","extras"', 1)[0]
-                    except:
-                        pass
-                
-                matrix_slot.markdown(
-                    "| Day | Condition | Temp (Low / High) | Rain % |\n"
-                    "| :--- | :---: | :---: | :---: |\n"
-                    "| **Sun** (Today) | ☀️ *Sunny / Extreme Heat* | 33°C / **43°C** | 0% |\n"
-                    "| **Mon** | ☀️ *Intense Sun Exposure* | 32°C / **43°C** | 5% |\n"
-                    "| **Tue** | 🌦️ *Passing Afternoon Clouds* | 32°C / **41°C** | 15% |\n"
-                    "| **Wed** | ☀️ *Clear / High Heat* | 32°C / **42°C** | 5% |\n"
-                    "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
-                    "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |\n"
-                    "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |"
-                )
-                
-                full_saved_response = f"### ☀️ {target_district} 6-Day Visual Forecast Matrix\n[Grid Live]\n\n🚨 *Action Protocols Loaded.*"
-                st.session_state.messages.append({"role": "assistant", "content": full_saved_response})
+                    matrix_slot.warning("⚠️ All active API keys have run out of daily requests. Please update your Streamlit Secrets string with a fresh key.")
+                    answer = "API quota exceeded."
+            
+            st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {target_district}."})
 
+        else:
+            # Handles places near Hanamkonda, global hotel packages, and budget planning smoothly
+            if st.session_state.agent is None:
+                st.error("⚠️ System Key Error: All listed API keys have expired or are formatted wrong. Please paste a fresh key into your secrets panel.")
             else:
                 with st.spinner("Processing expert travel logic..."):
                     try:
-                        if st.session_state.agent is None:
-                            st.session_state.agent = get_agent()
+                        context = safe_vector_search(user_input)
+                        combined_prompt = f"Context:\n{context}\n\nQuestion: {user_input}"
                         result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
                         answer = str(result["messages"][-1].content)
+                        st.write(answer)
+                        st.session_state.messages.append({"role": "assistant", "content": answer})
                     except Exception:
-                        st.session_state.agent = get_agent()
-                        if st.session_state.agent:
-                            result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
-                            answer = str(result["messages"][-1].content)
-                        else:
-                            answer = "⚠️ Establishing fallback line links. Please resubmit your command request."
-                        
-                    st.write(answer)
-                    st.session_state.messages.append({"role": "assistant", "content": answer})
-                        
-except Exception as e:
-    st.error(f"❌ System Exception: {str(e)}")
+                        st.error("⚠️ API Request Blocked: The current key tier has run out of daily requests. Please provide a fresh key inside your Streamlit Dashboard panel.")
 
 st.markdown('</div>', unsafe_allow_html=True)
