@@ -71,14 +71,14 @@ st.markdown('<h1 class="main-header">AeroConcierge AI</h1>', unsafe_allow_html=T
 st.markdown('<div class="header-line"></div>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Autonomous Travel Intelligence & Verified Vector RAG Platform</p>', unsafe_allow_html=True)
 
-# FIXED: Multi-Key Array Secret Verification Checkpoint
+# Verification Checkpoint for Key Pools
 api_key = None
 if "GEMINI_API_KEYS" in st.secrets and len(st.secrets["GEMINI_API_KEYS"]) > 0:
-    api_key = st.secrets["GEMINI_API_KEYS"][0] # Use primary key for core embedding setups
+    api_key = st.secrets["GEMINI_API_KEYS"][0]
 elif "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    st.error("⚠️ Environment Configuration Missing: Please verify 'GEMINI_API_KEYS' array exists in your Streamlit Advanced Secrets panel.")
+    st.error("⚠️ Environment Configuration Missing: Please verify 'GEMINI_API_KEYS' exists in your secrets.")
     st.stop()
 
 @st.cache_resource
@@ -98,11 +98,6 @@ def load_data(_key):
         return FAISS.from_documents([all_pages[0]], embeddings)
     return None
 
-@st.cache_resource
-def get_cached_agent(_key):
-    os.environ["GOOGLE_API_KEY"] = _key
-    return get_agent()
-
 @st.cache_data
 def fast_vector_search(_query, _key):
     os.environ["GOOGLE_API_KEY"] = _key
@@ -116,9 +111,9 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 try:
-    os.environ["GOOGLE_API_KEY"] = api_key
+    # CRITICAL INJECTION: Instantiate the agent fresh on failover without memory caching
     if "agent" not in st.session_state or st.session_state.agent is None:
-        st.session_state.agent = get_cached_agent(api_key)
+        st.session_state.agent = get_agent()
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
@@ -142,7 +137,6 @@ try:
         )
 
         with st.chat_message("assistant"):
-            # Instantaneous pre-render check for explicit weather queries
             if any(keyword in user_input.lower() for keyword in ["weather", "temp", "temperature", "forecast", "karimnagar"]):
                 target_district = "Karimnagar"
                 for word in user_input.split():
@@ -160,8 +154,14 @@ try:
                 st.markdown("* 💧 **Hydration Matrix:** Drink water, buttermilk, or electrolyte solutions every 20 minutes.")
                 st.markdown("* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose, light breathable cotton fabrics.")
 
-                result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
-                answer = str(result["messages"][-1].content)
+                try:
+                    result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
+                    answer = str(result["messages"][-1].content)
+                except Exception:
+                    # If current agent instance token pool hit a 429 mid-session, reconstruct agent immediately with the next key
+                    st.session_state.agent = get_agent()
+                    result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
+                    answer = str(result["messages"][-1].content)
                 
                 if '"text":' in answer:
                     try:
@@ -185,10 +185,15 @@ try:
                 st.session_state.messages.append({"role": "assistant", "content": full_saved_response})
 
             else:
-                # Global trip itineraries and local sightseeing requests process straight to agent.py
                 with st.spinner("Processing expert travel logic..."):
-                    result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
-                    answer = str(result["messages"][-1].content)
+                    try:
+                        result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
+                        answer = str(result["messages"][-1].content)
+                    except Exception:
+                        st.session_state.agent = get_agent()
+                        result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
+                        answer = str(result["messages"][-1].content)
+                        
                     st.write(answer)
                     st.session_state.messages.append({"role": "assistant", "content": answer})
                         
