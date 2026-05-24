@@ -1,139 +1,102 @@
-import streamlit as st
+import json
 import os
+import streamlit as st
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.prebuilt import create_react_agent
+from tools import my_tools
 
-# --- FROM WEEK 2/3: Import your LangGraph multi-tool agent brain ---
-from agent import get_agent 
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import FAISS
+def clean_agent_output(result):
+    """
+    Safely intercept and clean the message output dictionary from LangGraph.
+    """
+    if not result or "messages" not in result:
+        return result
+        
+    messages = result["messages"]
+    if not messages:
+        return result
+        
+    last_msg = messages[-1]
+    if hasattr(last_msg, "content") and isinstance(last_msg.content, str):
+        text = last_msg.content.strip()
+        if '"text":' in text and '"extras"' in text:
+            try:
+                clean_json = text.lstrip("0123456789:[] ,\t\n").rstrip("]")
+                if not clean_json.startswith("{") and "{" in clean_json:
+                    clean_json = clean_json[clean_json.index("{"):]
+                
+                parsed = json.loads(clean_json)
+                if "text" in parsed:
+                    last_msg.content = parsed["text"]
+            except Exception:
+                if '"text":"' in text:
+                    extracted = text.split('"text":"', 1)[1].split('","extras"', 1)[0]
+                    last_msg.content = extracted.rstrip('"\n\t }')
+                elif '"text": "' in text:
+                    extracted = text.split('"text": "', 1)[1].split('",\n"extras"', 1)[0]
+                    last_msg.content = extracted.rstrip('"\n\t }')
+                    
+    return result
 
-# --- 1. Page Configuration & Premium Executive CSS Styling ---
-st.set_page_config(page_title="AeroConcierge AI", layout="centered")
+def get_agent():
+    """
+    Initializes and returns the compiled LangGraph reactive tool agent.
+    """
+    try:
+        # Verify API key availability prior to model binding
+        if "GOOGLE_API_KEY" not in os.environ and "GEMINI_API_KEY" in st.secrets:
+            os.environ["GOOGLE_API_KEY"] = st.secrets["GEMINI_API_KEY"]
 
-# Advanced Glassmorphic Dark-Mode UI Theme Injection
-st.markdown("""
-    <style>
-    /* Global Background Canvas */
-    .stApp {
-        background: radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 60%, #020617 100%);
-        color: #f1f5f9;
-        font-family: 'Inter', -apple-system, sans-serif;
-    }
-    
-    /* Smooth Cubic Focus Animation */
-    @keyframes ultraFadeIn {
-        0% { opacity: 0; filter: blur(6px); transform: translateY(12px); }
-        100% { opacity: 1; filter: blur(0px); transform: translateY(0); }
-    }
-    .animated-container {
-        animation: ultraFadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    
-    /* Professional Corporate Header Layout */
-    .main-header {
-        font-size: 2.75rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        background: linear-gradient(135deg, #ffffff 20%, #60a5fa 60%, #c084fc 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: center;
-        margin-top: 1.5rem;
-        margin-bottom: 0.1rem;
-    }
-    .sub-header {
-        font-size: 0.9rem;
-        color: #94a3b8;
-        text-align: center;
-        margin-bottom: 2.5rem;
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-        font-weight: 500;
-    }
-    .header-line {
-        height: 2px;
-        width: 50px;
-        background: linear-gradient(90deg, #3b82f6, #a855f7);
-        margin: 0 auto 1.2rem auto;
-        border-radius: 10px;
-    }
-    
-    /* Chat Input Field UI Overrides */
-    input {
-        background-color: #1e293b !important;
-        color: #f8fafc !important;
-        border: 1px solid #475569 !important;
-        border-radius: 10px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
-    }
-    input:focus {
-        border-color: #818cf8 !important;
-        box-shadow: 0 0 10px rgba(129, 140, 248, 0.3) !important;
-    }
-    
-    /* Modernized Chat Message Bubble Style Tweaks */
-    .stChatMessage {
-        background-color: rgba(30, 41, 59, 0.4) !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        border-radius: 12px !important;
-        margin-bottom: 10px !important;
-        padding: 10px !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
+        # Production Core Engine Allocation
+        llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0)
 
-# --- 2. Render Animated Header Interface ---
-st.markdown('<div class="animated-container">', unsafe_allow_html=True)
-st.markdown('<h1 class="main-header">AeroConcierge AI</h1>', unsafe_allow_html=True)
-st.markdown('<div class="header-line"></div>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Autonomous Travel Intelligence & Verified Vector RAG Platform</p>', unsafe_allow_html=True)
-
-# --- 3. Secure Production Key Injection ---
-if "GEMINI_API_KEY" in st.secrets:
-    api_key = st.secrets["GEMINI_API_KEY"]
-else:
-    st.error("⚠️ Environment Configuration Missing: Please set 'GEMINI_API_KEY' in your Streamlit Advanced Settings.")
-    st.stop()
-
-# --- 4. Caching Layers for Maximum Performance Optimization ---
-@st.cache_resource
-def load_data(_key): 
-    os.environ["GOOGLE_API_KEY"] = _key
-    base_path = os.path.dirname(__file__)
-    data_folder = os.path.join(base_path, "data", "raw")
-    
-    all_pages = []
-    if os.path.exists(data_folder):
-        files = [f for f in os.listdir(data_folder) if f.lower().endswith('.pdf')]
-        for f in files:
-            file_path = os.path.join(data_folder, f)
-            loader = PyPDFLoader(file_path)
-            all_pages.extend(loader.load_and_split())
+        # ULTRA-SPEED VISUAL DESIGN PROMPT MATRIX
+        system_instructions = (
+            "You are an elite AeroConcierge AI travel assistant optimized for high-speed scannability. "
+            "When a user requests weather data, temperatures, or forecasts for any city (like Karimnagar), "
+            "you must parse the data instantly and format it into a high-end visual grid layout. "
+            "DO NOT write long introductory descriptions or conversational filler text. "
+            "Structure your response exactly according to this Markdown layout template:\n\n"
             
-    if all_pages:
-        # PRODUCTION MIGRATION FIX: Synced embedding name core
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-        vector_db = FAISS.from_documents([all_pages[0]], embeddings)
-        if len(all_pages) > 1:
-            for page in all_pages[1:]:
-                vector_db.add_documents([page])
-        return vector_db
-    return None
+            "### ☀️ [City Name] 6-Day Visual Forecast Matrix\n\n"
+            "| Day | Condition | Temp (Low / High) | Rain % |\n"
+            "| :--- | :---: | :---: | :---: |\n"
+            "| **Mon** | ☀️ *Sunny / Extreme Heat* | 32°C / **43°C** | 5% |\n"
+            "| **Tue** | 🌦️ *Passing Afternoon Storms* | 32°C / **41°C** | 15% |\n"
+            "| **Wed** | ☀️ *Clear / Sun Exposure* | 32°C / **42°C** | 5% |\n"
+            "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
+            "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |\n"
+            "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |\n\n"
+            
+            "<br>\n\n"
+            "```text\n"
+            "📊 Global Source Validation: Google Weather Data Core Indexed\n"
+            "```\n\n"
+            "--- \n\n"
+            "### 🚨 1-Second Heatwave Action Protocols\n\n"
+            "* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay completely indoors.\n"
+            "* 💧 **Hydration Matrix:** Drink water or electrolyte solutions every 20 minutes (do not wait until you are thirsty).\n"
+            "* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose breathable fabrics if stepping outside.\n\n"
+            
+            "Map the real-time tool metrics into this exact table layout pattern smoothly, using appropriate weather "
+            "emojis (☀️, 🌤️, 🌧️, 🌦️, 🌩️) matching the condition data."
+        )
 
-@st.cache_resource
-def get_cached_agent(_key):
-    os.environ["GOOGLE_API_KEY"] = _key
-    return get_agent()
+        # Build the graph agent structure cleanly
+        agent = create_react_agent(llm, tools=my_tools, prompt=system_instructions)
+        
+        # Intercept the invoke call to clean metadata wrappers automatically
+        original_invoke = agent.invoke
+        def secured_invoke(*args, **kwargs):
+            raw_result = original_invoke(*args, **kwargs)
+            return clean_agent_output(raw_result)
+            
+        agent.invoke = secured_invoke
+        
+        # CRITICAL FIX: Return the compiled agent instance back to app.py
+        return agent
 
-# PERFORMANCE FIX: Cache search operations to prevent UI loop lag
-@st.cache_data
-def fast_vector_search(_query, _key):
-    os.environ["GOOGLE_API_KEY"] = _key
-    vector_db = load_data(_key)
-    if vector_db:
-        docs = vector_db.similarity_search(_query, k=2) 
-        return "\n".join([d.page_content for d in docs])
-    return ""
-
-if "messages" not in st.session_state
+    except Exception as e:
+        # Fail-safe print error to console logs if initialization slips
+        print(f"Error compiling agent instance: {str(e)}")
+        return None
