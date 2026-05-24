@@ -8,7 +8,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 
-# --- 1. Page Configuration & Professional Styling ---
+# --- 1. Page Configuration & Premium Styling ---
 st.set_page_config(page_title="AI Travel Concierge", layout="centered")
 
 # Custom CSS Injection for high-end UI/UX, premium color combinations, and fade-in animations
@@ -48,31 +48,13 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     
-    /* Glassmorphic Cards & Inputs */
-    div.stButton > button {
-        background: linear-gradient(90deg, #0284c7 0%, #7e22ce 100%) !important;
-        color: white !important;
-        border: none !important;
-        padding: 0.6rem 2rem !important;
-        font-weight: 600 !important;
-        border-radius: 8px !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 4px 15px rgba(126, 34, 206, 0.3);
-    }
-    div.stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
-    }
-    
-    /* Text input overrides */
+    /* Glassmorphic Chat Box and Styling Elements */
     input {
         background-color: #1e293b !important;
         color: #f8fafc !important;
         border: 1px solid #334155 !important;
         border-radius: 8px !important;
     }
-    
-    /* Success & Status Boxes */
     .stAlert {
         background-color: rgba(30, 41, 59, 0.7) !important;
         border: 1px solid #475569 !important;
@@ -81,36 +63,18 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. Centralized Premium Authentication Screen ---
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-if not st.session_state.authenticated:
-    st.markdown('<div class="animated-container">', unsafe_allow_html=True)
-    st.markdown('<h1 class="main-header">AI TRAVEL CONCIERGE</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Next-Generation Autonomous Travel Intelligence & Vector RAG Platform</p>', unsafe_allow_html=True)
-    
-    # Custom container layout for center screen
-    with st.container():
-        input_key = st.text_input("Secure Gateway Validation (Enter Gemini API Key):", type="password", placeholder="AIzaSy...")
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        if st.button("Initialize Executive Intelligence System", use_container_width=True):
-            if input_key.strip():
-                st.session_state.api_key = input_key.strip()
-                st.session_state.authenticated = True
-                st.rerun()
-            else:
-                st.error("⚠️ Security Clearance Failed: Please enter a valid API key.")
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.stop()
-
-# --- 3. Main App Interface (Visible post-login) ---
-api_key = st.session_state.api_key
-
+# --- 2. Main Premium App Layout ---
 st.markdown('<div class="animated-container">', unsafe_allow_html=True)
 st.markdown('<h1 class="main-header">✈️ AI TRAVEL CONCIERGE</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Your documents, web resources, and real-time environment data connected seamlessly.</p>', unsafe_allow_html=True)
+
+# --- 3. Secure Production Key Injection ---
+# Pulls directly from your secure Streamlit Dashboard Cloud settings secretly
+if "GEMINI_API_KEY" in st.secrets:
+    api_key = st.secrets["GEMINI_API_KEY"]
+else:
+    st.error("⚠️ Environment Configuration Missing: Please set 'GEMINI_API_KEY' in your Streamlit Advanced Settings.")
+    st.stop()
 
 # --- 4. Knowledge Base Loader ---
 @st.cache_resource
@@ -129,15 +93,10 @@ def load_data(_key):
             
     if all_pages:
         embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
-        
-        # 1. Initialize vector indexing
         vector_db = FAISS.from_documents([all_pages[0]], embeddings)
-        
-        # 2. Add remaining documents
         if len(all_pages) > 1:
             for page in all_pages[1:]:
                 vector_db.add_documents([page])
-        
         return vector_db
     return None
 
@@ -146,11 +105,10 @@ def get_cached_agent(_key):
     os.environ["GOOGLE_API_KEY"] = _key
     return get_agent()
 
-# Initialize Chat History State Array
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- 5. Application Core ---
+# --- 5. Application Core Execution Loop ---
 try:
     os.environ["GOOGLE_API_KEY"] = api_key
     vector_db = load_data(api_key)
@@ -159,12 +117,14 @@ try:
         st.session_state.agent = get_cached_agent(api_key)
 
     if vector_db:
-        # Render historical messages beautifully onto the page
+        st.write("✨ Intelligence matrix fully synchronized. Ask me anything!")
+
+        # Render chat history with smooth styles
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
 
-        # User input execution layout
+        # Chat interface panel
         user_input = st.chat_input("Inquire regarding your upcoming itineraries or destination weather...")
 
         if user_input:
@@ -172,7 +132,6 @@ try:
             with st.chat_message("user"):
                 st.write(user_input)
 
-            # Similarity search inside embedded PDF documents
             docs = vector_db.similarity_search(user_input, k=3)
             context = "\n".join([d.page_content for d in docs])
             
@@ -184,7 +143,6 @@ try:
                 f"(like real-time weather or web details), use your tools automatically."
             )
 
-            # Invoke Agent Engine
             with st.chat_message("assistant"):
                 with st.spinner("Analyzing data vectors and computing response..."):
                     
@@ -192,7 +150,6 @@ try:
                     last_message = result["messages"][-1]
                     answer = ""
                     
-                    # Native object list un-wrapper
                     if hasattr(last_message, "content") and isinstance(last_message.content, list):
                         extracted_chunks = []
                         for chunk in last_message.content:
@@ -206,7 +163,6 @@ try:
                     else:
                         answer = str(last_message)
                     
-                    # Fail-safe cleaning fallback
                     if '"text":' in answer or '"signature":' in answer:
                         for anchor in ['"text":"', '"text": "']:
                             if anchor in answer:
@@ -217,7 +173,6 @@ try:
                                 answer = sliced_data.rstrip('"\n\t }]]')
                                 break
 
-                    # Render text outcome onto page frame
                     st.write(answer)
                     st.session_state.messages.append({"role": "assistant", "content": answer})
                         
