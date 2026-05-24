@@ -112,7 +112,7 @@ def load_data(_key):
             all_pages.extend(loader.load_and_split())
             
     if all_pages:
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
+     embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
         vector_db = FAISS.from_documents([all_pages[0]], embeddings)
         if len(all_pages) > 1:
             for page in all_pages[1:]:
