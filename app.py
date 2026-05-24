@@ -14,7 +14,7 @@ st.title("✈️ AI Travel Concierge")
 # --- 2. Sidebar Setup (Week 1 - Undisturbed) ---
 api_key = st.sidebar.text_input("Gemini API Key", type="password")
 
-# --- 3. Knowledge Base Loader (Week 1 - Cleaned of broken invisible characters) ---
+# --- 3. Knowledge Base Loader (Week 1 - Cleaned of invisible characters) ---
 @st.cache_resource
 def load_data(_key): 
     os.environ["GOOGLE_API_KEY"] = _key
@@ -45,22 +45,29 @@ def load_data(_key):
         return vector_db
     return None
 
-# --- FROM WEEK 2: Initialize Agent and Chat History State Variables ---
-# --- FIXED: Use st.cache_resource to stop creating new instances on every click ---
+# --- FIXED: Use st.cache_resource with a key dependency to avoid initialization loops ---
 @st.cache_resource
-def get_cached_agent():
+def get_cached_agent(_key):
+    # Lock the environment key securely before setup runs
+    os.environ["GOOGLE_API_KEY"] = _key
     return get_agent()
 
-if "agent" not in st.session_state:
-    st.session_state.agent = get_cached_agent()
-
+# Initialize Chat History State Array
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # --- 4. Main App Logic ---
 if api_key:
     try:
+        # Set environment variable safely for internal tracking tools
+        os.environ["GOOGLE_API_KEY"] = api_key
+        
+        # Load Vector Store
         vector_db = load_data(api_key)
+
+        # FIXED: Only spin up the agent inside the authorization safety check gate
+        if "agent" not in st.session_state:
+            st.session_state.agent = get_cached_agent(api_key)
 
         if vector_db:
             # --- FROM WEEK 2: Dynamic Layout Description ---
@@ -97,7 +104,7 @@ if api_key:
                 with st.chat_message("assistant"):
                     with st.spinner("Using tools to find the answer..."):
                         
-                        # We pass the input as a LangGraph message stream to prevent KeyErrors
+                        # Pass prompt structure seamlessly to your agent session loop
                         result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
                         answer = result["messages"][-1].content
                         
