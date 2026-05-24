@@ -6,17 +6,11 @@ from langgraph.prebuilt import create_react_agent
 from tools import my_tools
 
 def clean_agent_output(result):
-    """
-    Safely strips out background metadata, signature string leaks, and JSON artifacts
-    to return pure markdown layout content to app.py.
-    """
     if not result or "messages" not in result:
         return result
-        
     messages = result["messages"]
     if not messages:
         return result
-        
     last_msg = messages[-1]
     if hasattr(last_msg, "content"):
         if isinstance(last_msg.content, list):
@@ -42,34 +36,36 @@ def clean_agent_output(result):
                         except:
                             pass
             last_msg.content = text.replace(r'\"', '"').rstrip("'\" \n\t}]")
-            
     return result
 
 def get_agent():
     """
-    Initializes and returns the compiled LangGraph reactive tool agent.
-    Loops through available backend secret keys to circumvent 429 Resource Limits.
+    Safely parses the comma-separated key string and initializes the agent.
+    Loops through backup options if a 429 quota or 400 error strikes.
     """
-    # 1. Gather keys from array or fallback to a single key configuration
     keys_pool = []
+    
+    # Clean string extraction to completely bypass TOML bracket parsing bugs
     if "GEMINI_API_KEYS" in st.secrets:
-        keys_pool = list(st.secrets["GEMINI_API_KEYS"])
+        raw_keys = st.secrets["GEMINI_API_KEYS"]
+        # Split by comma and strip out any accidental whitespace or quotes
+        keys_pool = [k.strip().replace('"', '').replace("'", "") for k in raw_keys.split(",") if k.strip()]
     elif "GEMINI_API_KEY" in st.secrets:
-        keys_pool = [st.secrets["GEMINI_API_KEY"]]
+        keys_pool = [st.secrets["GEMINI_API_KEY"].strip()]
 
     if not keys_pool:
-        st.error("Error: No Gemini API Keys discovered within Streamlit Secrets configuration layers.")
         return None
 
-    # 2. Loop through keys until an active endpoint initializes successfully
-    for index, current_key in enumerate(keys_pool):
+    # Step-through key validation loop
+    for current_key in keys_pool:
         try:
+            # Skip obviously broken or placeholder entries
+            if not current_key.startswith("AIzaSy"):
+                continue
+                
             os.environ["GOOGLE_API_KEY"] = current_key
-            
-            # Instantiating the robust production model engine
             llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
 
-            # UNIFIED TRAVEL CONCIERGE DESIGN PROMPT MATRIX
             system_instructions = (
                 "You are the ultimate AeroConcierge AI Global Travel Expert. You specialize in high-speed scannability. "
                 "You create 6-day weather grids, locate budget-matched hotels, and map out sights all over the world—"
@@ -120,9 +116,7 @@ def get_agent():
             agent.invoke = secured_invoke
             
             return agent
-
-        except Exception as e:
-            # Continue looping to try the next key if this one hits a limit
-            continue
+        except Exception:
+            continue # Try next key string if connection initialization errors out
             
     return None
