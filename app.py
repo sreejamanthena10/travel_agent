@@ -191,14 +191,13 @@ with col4:
         st.session_state.messages.append({"role": "user", "content": f"🔮 Explore Sights near **{target}**"})
     st.markdown('<div class="feature-card card-white" style="margin-top: -55px;"><div><div class="card-title">Not sure?</div><div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div></div><div style="font-size: 3rem; text-align: right;">🔮</div></div>', unsafe_allow_html=True)
 
-# --- 5. RENDER CHAT INTERFACE & POSITION BOX (Bypasses Halts) ---
+# --- 5. RENDER CHAT INTERFACE & POSITION BOX ---
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# MOVED HIGHER: The chat box renders here so it is ALWAYS visible on screen
 chat_input_val = st.chat_input("Type your travel needs here...")
 user_input = click_prompt if click_prompt else chat_input_val
 
@@ -241,10 +240,28 @@ if user_input:
                         "| :--- | :---: | :---: | :---: |\n"
                         "| **Sun** (Today) | ☀️ *Sunny / Extreme Heat* | 33°C / **43°C** | 0% |\n"
                         "| **Mon** | ☀️ *Intense Sun Exposure* | 32°C / **43°C** | 5% |\n"
-                        "| **Tue** | 🌦️ *Passing Afternoon Clouds* | 32°C / **41°C** | 15% |\n"
+                        "| **Uni** | 🌦️ *Passing Afternoon Clouds* | 32°C / **41°C** | 15% |\n"
                         "| **Wed** | ☀️ *Clear / High Heat* | 32°C / **42°C** | 5% |\n"
                         "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
                         "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |\n"
                         "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |"
                     )
-                    st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for
+                    # FIXED: Cleanly closed out the f-string line layout without multi-line breakage gaps
+                    st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {loc}."})
+                except Exception:
+                    matrix_slot.error("⚠️ Connected API tokens out of query calls limit.")
+
+        else:
+            if live_agent is None:
+                st.error("⚠️ API Request Blocked: Your listed tokens have exhausted their parameters. Update your backend secret strings.")
+            else:
+                with st.spinner("Processing expert travel logic..."):
+                    try:
+                        result = live_agent.invoke({"messages": [("user", user_input)]})
+                        answer = str(result["messages"][-1].content)
+                        st.markdown(answer)
+                        st.session_state.messages.append({"role": "assistant", "content": answer})
+                    except Exception:
+                        st.error("⚠️ API Request Blocked: The model engine encountered an operational timeout limit.")
+
+st.markdown("</div>", unsafe_allow_html=True)
