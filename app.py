@@ -140,7 +140,7 @@ st.markdown("""
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "current_destination" not in st.session_state:
-    st.session_state.current_destination = "" # Starts empty, logs dynamically from your chat queries
+    st.session_state.current_destination = "" 
 
 # --- 3. Render Top Branding Hero Content ---
 st.markdown("""
@@ -156,8 +156,10 @@ st.markdown("""
 # Latch variable for monitoring button selections
 click_prompt = ""
 
-# --- 4. Render Service Display Cards System (Exactly like your screenshot) ---
-st.markdown('<p style="text-align:center; color:#64748b; margin-top:-1rem; margin-bottom:2rem;">Start by choosing priority service or just describing your needs below!</p>', unsafe_allow_html=True)
+# --- 4. Render Service Display Cards System ---
+st.markdown("""
+<p style="text-align:center; color:#64748b; margin-top:-1rem; margin-bottom:2rem;">Start by choosing priority service or just describing your needs below!</p>
+""", unsafe_allow_html=True)
 
 col1, col2, col3, col4 = st.columns(4)
 
@@ -166,4 +168,10 @@ with col1:
         target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
         click_prompt = f"Build a comprehensive travel itinerary layout for: {target}"
         st.session_state.messages.append({"role": "user", "content": f"📍 Build full Itinerary for **{target}**"})
-    st.markdown('<div
+    st.markdown('<div class="feature-card card-yellow" style="margin-top: -55px;"><div><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences and days.</div></div><div style="font-size: 3rem; text-align: right;">📍</div></div>', unsafe_allow_html=True)
+
+with col2:
+    if st.button("", key="btn_flights"):
+        target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
+        click_prompt = f"Find flight travel route options, tracking deals, airline carriers, and pricing structures for: {target}"
+        st.session_state.messages.append({"role
