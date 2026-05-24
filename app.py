@@ -99,6 +99,16 @@ def get_cached_agent(_key):
     os.environ["GOOGLE_API_KEY"] = _key
     return get_agent()
 
+# FIXED: Re-added the missing cached vector search function back into the file scope
+@st.cache_data
+def fast_vector_search(_query, _key):
+    os.environ["GOOGLE_API_KEY"] = _key
+    vector_db = load_data(_key)
+    if vector_db:
+        docs = vector_db.similarity_search(_query, k=2) 
+        return "\n".join([d.page_content for d in docs])
+    return ""
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -118,6 +128,7 @@ try:
         with st.chat_message("user"):
             st.write(user_input)
 
+        # Safely calls the defined function above
         context = fast_vector_search(user_input, api_key)
         
         combined_prompt = (
@@ -129,28 +140,23 @@ try:
         )
 
         with st.chat_message("assistant"):
-            # Instantaneous pre-render layout check
             if any(keyword in user_input.lower() for keyword in ["weather", "temp", "temperature", "forecast", "karimnagar"]):
                 target_district = "Karimnagar"
                 for word in user_input.split():
                     if word.lower() in ["karimnagar", "hanamkonda", "warangal", "hyderabad"]:
                         target_district = word.capitalize()
 
-                # 1. Paint core typography and structure under 0.5s
                 st.markdown(f"### ☀️ {target_district} 6-Day Visual Forecast Matrix")
                 
-                # 2. Open an empty frame slot for streaming incoming data
                 matrix_slot = st.empty()
                 matrix_slot.info("🔄 Streaming real-time satellite data packages...")
                 
-                # 3. Print the emergency protocols right beneath it immediately
                 st.markdown("---")
                 st.markdown(f"### 🚨 1-Second Heatwave Action Protocols ({target_district})")
                 st.markdown("* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay completely indoors to avoid extreme ambient temperatures.")
                 st.markdown("* 💧 **Hydration Matrix:** Drink water, buttermilk, or electrolyte solutions every 20 minutes.")
                 st.markdown("* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose, light breathable cotton fabrics.")
 
-                # 4. Invoke background agent data lookup
                 result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
                 answer = str(result["messages"][-1].content)
                 
@@ -160,7 +166,6 @@ try:
                     except:
                         pass
                 
-                # 5. Swap out loader message with full matrix table instantly
                 matrix_slot.markdown(
                     "| Day | Condition | Temp (Low / High) | Rain % |\n"
                     "| :--- | :---: | :---: | :---: |\n"
@@ -173,7 +178,6 @@ try:
                     "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |"
                 )
                 
-                # FIXED: Added the missing closing f-string quotation mark block properly
                 full_saved_response = f"### ☀️ {target_district} 6-Day Visual Forecast Matrix\n[Grid Live]\n\n🚨 *Action Protocols Loaded.*"
                 st.session_state.messages.append({"role": "assistant", "content": full_saved_response})
 
