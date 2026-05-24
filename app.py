@@ -10,7 +10,7 @@ from langchain_community.vectorstores import FAISS
 # --- 1. Page Configuration ---
 st.set_page_config(page_title="Free AI Travel Agent", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. Premium UI Design & Layout Injector (Matching Image Layout) ---
+# --- 2. Premium UI Design & Layout Injector (With Clickable Card Fixes) ---
 st.markdown("""
     <style>
     /* Global App Background Styling */
@@ -41,26 +41,33 @@ st.markdown("""
         line-height: 1.5;
     }
     
-    /* Service Layout Cards System */
-    .cards-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 1.5rem;
-        max-width: 1100px;
-        margin: 0 auto 3rem auto;
-        padding: 0 1rem;
+    /* Transparent Clickable Button Wrapping Over CSS Cards */
+    div.stButton > button {
+        background-color: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        text-align: left !important;
+        box-shadow: none !important;
     }
+    div.stButton > button:hover {
+        background-color: transparent !important;
+        border: none !important;
+    }
+    
+    /* Service Layout Cards System */
     .feature-card {
         background-color: white;
         border-radius: 20px;
         padding: 2rem 1.5rem;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.04);
         transition: transform 0.3s ease, box-shadow 0.3s ease;
-        cursor: pointer;
-        min-height: 250px;
+        min-height: 220px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
+        width: 100%;
     }
     .feature-card:hover {
         transform: translateY(-5px);
@@ -135,39 +142,67 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 4. Render Service Display Cards (Visual Layer Grid) ---
-st.markdown("""
-<div class="cards-grid">
-    <div class="feature-card card-yellow">
+# Create a session variable to track card selection inputs
+click_input = None
+
+# --- 4. Render Service Display Cards via Clickable Columns System ---
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    card1 = st.button("", key="btn_itinerary")
+    st.markdown("""
+    <div class="feature-card card-yellow" style="margin-top: -55px;">
         <div>
             <div class="card-title">Build Itinerary</div>
             <div class="card-desc">Tailored completely for your preferences and days.</div>
         </div>
         <div style="font-size: 3rem; text-align: right;">📍</div>
     </div>
-    <div class="feature-card card-blue-light">
+    """, unsafe_allow_html=True)
+    if card1:
+        click_input = "Help me build a complete travel itinerary."
+
+with col2:
+    card2 = st.button("", key="btn_flights")
+    st.markdown("""
+    <div class="feature-card card-blue-light" style="margin-top: -55px;">
         <div>
             <div class="card-title">Find Flights</div>
             <div class="card-desc">Smart deals tracked across multiple global sources.</div>
         </div>
         <div style="font-size: 3rem; text-align: right;">📅</div>
     </div>
-    <div class="feature-card card-blue-dark">
+    """, unsafe_allow_html=True)
+    if card2:
+        click_input = "Find the best flight deals for my next destination."
+
+with col3:
+    card3 = st.button("", key="btn_hotels")
+    st.markdown("""
+    <div class="feature-card card-blue-dark" style="margin-top: -55px;">
         <div>
             <div class="card-title">Find Hotels</div>
             <div class="card-desc">Perfect accommodation metrics matched to your needs.</div>
         </div>
         <div style="font-size: 3rem; text-align: right;">🏨</div>
     </div>
-    <div class="feature-card card-white">
+    """, unsafe_allow_html=True)
+    if card3:
+        click_input = "Find budget-matched hotels for my trip."
+
+with col4:
+    card4 = st.button("", key="btn_suggest")
+    st.markdown("""
+    <div class="feature-card card-white" style="margin-top: -55px;">
         <div>
             <div class="card-title">Not sure?</div>
             <div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div>
         </div>
         <div style="font-size: 3rem; text-align: right;">🔮</div>
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+    if card4:
+        click_input = "I am not sure where to go. Suggest some destinations!"
 
 # --- 5. Extract Multi-Key Verification Tokens Pool Safely ---
 keys_list = get_keys_pool()
@@ -224,9 +259,11 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# --- 6. Execution Processing Layer ---
-user_input = st.chat_input("Type your needs... (e.g., Plan a budget trip to Arunachalam, things to do in Hanamkonda)")
+# Catch text input either from the chat input field OR from a card click event
+chat_box_input = st.chat_input("Type your needs... (e.g., Plan a budget trip to Arunachalam, things to do in Hanamkonda)")
+user_input = click_input if click_input else chat_box_input
 
+# --- 6. Execution Processing Layer ---
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
