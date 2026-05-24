@@ -131,47 +131,4 @@ st.markdown("""
     }
     
     /* Clean up default Streamlit branding layout elements */
-    #MainMenu, footer, header {visibility: hidden;}
-    .block-container {padding-top: 1rem !important; padding-bottom: 6rem !important;}
-    </style>
-""", unsafe_allow_html=True)
-
-# Initialize persistent destination trackers silently in memory
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "current_destination" not in st.session_state:
-    st.session_state.current_destination = "" 
-
-# --- 3. Render Top Branding Hero Content ---
-st.markdown("""
-<div class="hero-container">
-    <div class="main-title">Begin Your Next Adventure 🪂</div>
-    <div class="sub-title">
-        Hi! I'm your AI Trip Partner, here to make trip planning easy. Share your travel details, 
-        and I'll make your ideal plan! Happy Travels! ✈️
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# Latch variable for monitoring button selections
-click_prompt = ""
-
-# --- 4. Render Service Display Cards System ---
-st.markdown("""
-<p style="text-align:center; color:#64748b; margin-top:-1rem; margin-bottom:2rem;">Start by choosing priority service or just describing your needs below!</p>
-""", unsafe_allow_html=True)
-
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    if st.button("", key="btn_itinerary"):
-        target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
-        click_prompt = f"Build a comprehensive travel itinerary layout for: {target}"
-        st.session_state.messages.append({"role": "user", "content": f"📍 Build full Itinerary for **{target}**"})
-    st.markdown('<div class="feature-card card-yellow" style="margin-top: -55px;"><div><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences and days.</div></div><div style="font-size: 3rem; text-align: right;">📍</div></div>', unsafe_allow_html=True)
-
-with col2:
-    if st.button("", key="btn_flights"):
-        target = st.session_state.current_destination if st.session_state.current_destination else "my destination"
-        click_prompt = f"Find flight travel route options, tracking deals, airline carriers, and pricing structures for: {target}"
-        st.session_state.messages.append({"role
+    #MainMenu
