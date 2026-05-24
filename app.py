@@ -161,7 +161,52 @@ try:
         # Call the optimized memory-cached vector store lookup
         context = fast_vector_search(user_input, api_key)
         
+        # FIXED: Resolved the multiline f-string formatting syntax break completely using safe structural blocks
         combined_prompt = (
-            f"Use this extracted context from the user's travel documents to help answer if relevant:\n"
-            f"{context}\n\n"
-            f"User
+            "Use this extracted context from the user's travel documents to help answer if relevant:\n"
+            + str(context)
+            + "\n\nUser Question: "
+            + str(user_input)
+            + "\n\nNote: If the document context isn't enough, or if you need current information (like real-time weather or web details), use your tools automatically."
+        )
+
+        with st.chat_message("assistant"):
+            with st.spinner("Processing..."):
+                
+                # Execute graph logic stream directly
+                result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
+                last_message = result["messages"][-1]
+                answer = ""
+                
+                # Structural payload content parsing
+                if hasattr(last_message, "content") and isinstance(last_message.content, list):
+                    extracted_chunks = []
+                    for chunk in last_message.content:
+                        if isinstance(chunk, dict) and "text" in chunk:
+                            extracted_chunks.append(chunk["text"])
+                        elif isinstance(chunk, str):
+                            extracted_chunks.append(chunk)
+                    answer = "\n".join(extracted_chunks)
+                elif hasattr(last_message, "content"):
+                    answer = str(last_message.content)
+                else:
+                    answer = str(last_message)
+                
+                # Automated token data streaming extraction cleanups
+                if '"text":' in answer or '"signature":' in answer:
+                    for anchor in ['"text":"', '"text": "']:
+                        if anchor in answer:
+                            sliced_data = answer.split(anchor, 1)[1]
+                            for terminator in ['","extras"', '",\n"extras"', '"\n"extras"']:
+                                if terminator in sliced_data:
+                                    sliced_data = sliced_data.split(terminator, 1)[0]
+                            answer = sliced_data.rstrip('"\n\t }]]')
+                            break
+
+                st.write(answer)
+                st.session_state.messages.append({"role": "assistant", "content": answer})
+                        
+except Exception as e:
+    st.error(f"❌ System Exception Encountered: {str(e)}")
+
+st.markdown('</div>', unsafe_allow_html=True)
