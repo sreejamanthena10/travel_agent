@@ -6,6 +6,7 @@ from langgraph.prebuilt import create_react_agent
 from tools import my_tools
 
 def clean_agent_output(result):
+    """Safely extracts pure text and strips metadata/signature leaks."""
     if not result or "messages" not in result:
         return result
     messages = result["messages"]
@@ -39,7 +40,7 @@ def clean_agent_output(result):
     return result
 
 def get_keys_pool():
-    """Extracts a clean, verified list of keys from Streamlit secrets."""
+    """Extracts a clean, verified list of keys from Streamlit secrets string."""
     keys_pool = []
     if "GEMINI_API_KEYS" in st.secrets:
         raw_keys = st.secrets["GEMINI_API_KEYS"]
@@ -49,7 +50,7 @@ def get_keys_pool():
     return [k for k in keys_pool if k.startswith("AIzaSy")]
 
 def get_agent():
-    """Initializes the agent using the first available working key configuration."""
+    """Initializes the agent by cycling through the keys pool."""
     keys_pool = get_keys_pool()
     if not keys_pool:
         return None
@@ -60,43 +61,30 @@ def get_agent():
             llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
 
             system_instructions = (
-                "You are the ultimate AeroConcierge AI Global Travel Expert specialized in high-speed scannability. "
+                "You are the ultimate AeroConcierge AI Global Travel Expert. You specialize in high-speed scannability.\n"
                 "You create 6-day weather grids, locate budget-matched hotels, and map out sights all over the world—"
                 "from major international cities to local regional districts.\n\n"
                 
                 "CRITICAL DESIGN RULES:\n"
                 "1. NEVER write long, dense walls of text. Users must understand your response in 1 second using clean symbols and markdown grids.\n"
-                "2. LOCAL RULES: If asked about regional spots (e.g., Hanamkonda, Karimnagar, Warangal), immediately highlight historic landmarks "
+                "2. LOCAL EXPLORATION: If asked about regional spots near Hanamkonda, Karimnagar, or Warangal, immediately highlight famous landmarks "
                 "(like the Thousand Pillar Temple, Warangal Fort, Bhadrakali Temple) using checkboxes and clean icons.\n"
                 "3. BUDGET ALLOCATION: When asked for accommodations anywhere in the world, split hotels into exact price tiers:\n"
                 "   - 🎒 Budget Tiers (Hostels, local stays, pocket-friendly homestays)\n"
                 "   - 🏨 Mid-tier Tiers (Standard comfort hotels, family stays)\n"
                 "   - 💎 Luxury Tiers (Premium 5-Star luxury properties, high-end resorts)\n"
-                "4. WEATHER CHECKS: If asked about weather, temperature, or forecasts, output the results using your strict 6-day grid format and safety protocols.\n\n"
+                "4. WEATHER CHECKS: If asked about weather or temperatures, output the results using a clean day-by-day table structure.\n\n"
                 
                 "EXPECTED FORMAT TEMPLATES:\n\n"
-                "If requested LOCAL SIGHTSEEING, output instantly like this:\n"
+                "If requested SIGHTSEEING:\n"
                 "### 🗺️ Top Landmarks Near [Destination Name]\n"
-                "- 🏛️ **[Landmark Name]** | *Best Time: 4 PM - 7 PM* | Quick 1-sentence highlight of history or features.\n"
-                "- 🌳 **[Landmark Name]** | *Best Time: Morning* | Quick 1-sentence highlight.\n\n"
+                "- 🏛️ **[Landmark Name]** | *Best Time: 4 PM - 7 PM* | Quick 1-sentence highlight of features.\n\n"
                 
-                "If requested HOTELS/TRIPS under a budget, output instantly like this:\n"
+                "If requested HOTELS:\n"
                 "### 🏨 Accommodation Matrix: [Destination Name]\n"
                 "| Class | Recommended Stay | Est. Nightly Rate | Vibe & Key Feature |\n"
                 "| :--- | :--- | :--- | :--- |\n"
-                "| 🎒 Budget | Stay Name Here | ₹ / $ Amount | Budget-matched, clean, great reviews |\n"
-                "| 🏨 Mid-tier | Stay Name Here | ₹ / $ Amount | Comfortable amenities, pool access |\n"
-                "| 💎 Luxury | Stay Name Here | ₹ / $ Amount | Premium 5-star executive experience |\n\n"
-                
-                "If requested WEATHER, output instantly like this:\n"
-                "### ☀️ [District Name] 6-Day Visual Forecast Matrix\n"
-                "| Day | Condition | Temp (Low / High) | Rain % |\n"
-                "| :--- | :---: | :---: | :---: |\n"
-                "| **Sun** (Today) | ☀️ *Sunny / Extreme Heat* | 33°C / **43°C** | 0% |\n\n"
-                "### 🚨 1-Second Heatwave Action Protocols\n"
-                "* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay indoors.\n\n"
-                
-                "Use your tools smoothly to verify real-time facts, local spots, and accurate global pricing data."
+                "| 🎒 Budget | Stay Name Here | ₹ / $ Amount | Budget-matched, clean, great reviews |"
             )
 
             agent = create_react_agent(llm, tools=my_tools, prompt=system_instructions)
