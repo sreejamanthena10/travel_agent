@@ -1,20 +1,16 @@
 import os
 import streamlit as st
 from langchain_core.tools import tool
-from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.utilities import GoogleSearchAPIWrapper
+from langchain_community.tools import DuckDuckGoSearchRun
 
-# 1. Initialize the Base Global Web Search Engine Utility Safely
+# Initialize the free DuckDuckGo Search Engine Utility
 try:
-    # Fallback to look at primary key arrays if explicit environment variables aren't set yet
-    if "GOOGLE_API_KEY" not in os.environ and "GEMINI_API_KEYS" in st.secrets:
-        os.environ["GOOGLE_API_KEY"] = st.secrets["GEMINI_API_KEYS"].split(",")[0].strip()
-        
-    search_wrapper = GoogleSearchAPIWrapper()
+    search_engine = DuckDuckGoSearchRun()
 except Exception:
-    search_wrapper = None
+    search_engine = None
 
 @tool
 def google_travel_search(query: str) -> str:
@@ -22,12 +18,12 @@ def google_travel_search(query: str) -> str:
     Searches the live web for global travel information, flight details, hotel pricing, 
     and famous landmark updates all over the world. Use this for general global destinations.
     """
-    if search_wrapper:
+    if search_engine:
         try:
-            return str(search_wrapper.run(query))
+            return str(search_engine.run(query))
         except Exception as e:
-            return f"Web search temporarily unavailable: {str(e)}"
-    return "Search infrastructure uninitialized. Please configure search variables."
+            return f"Live search temporarily unavailable: {str(e)}"
+    return "Search infrastructure uninitialized."
 
 @tool
 def search_local_travel_documents(query: str) -> str:
@@ -60,5 +56,5 @@ def search_local_travel_documents(query: str) -> str:
     
     return "No local travel documents found in the database directory."
 
-# 2. EXPLICIT VARIABLE EXPORT: This is exactly what agent.py is looking for!
+# Export the tools clearly for agent.py
 my_tools = [google_travel_search, search_local_travel_documents]
