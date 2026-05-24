@@ -1,12 +1,12 @@
 import streamlit as st
 import os
-import re
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import FAISS
+import json
 
 # --- FROM WEEK 2/3: Import your LangGraph multi-tool agent brain ---
 from agent import get_agent 
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.vectorstores import FAISS
 
 # --- 1. Page Configuration (Week 1 - Undisturbed) ---
 st.set_page_config(page_title="Travel AI", layout="centered")
@@ -98,13 +98,27 @@ if api_key:
                         result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
                         answer = result["messages"][-1].content
                         
-                        # --- GUARANTEED PARSING FILTER ---
-                        if isinstance(answer, str) and '"text":' in answer:
-                            # Use regex pattern matching to isolate only the target string segment
-                            match = re.search(r'"text"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', answer)
-                            if match:
-                                # Clean escape characters from the extracted text string safely
-                                answer = match.group(1).encode().decode('unicode_escape')
+                        # --- DOUBLE-CHECKED EXTRACTION FILTER ---
+                        if isinstance(answer, str) and ("text" in answer or "signature" in answer):
+                            try:
+                                # Clean off anomalous prefix markers that break json formatting
+                                clean_target = answer.strip().lstrip("0123456789:[] ,\t\n")
+                                if not clean_target.startswith("{") and "{" in clean_target:
+                                    clean_target = clean_target[clean_target.index("{"):]
+                                    
+                                parsed_json = json.loads(clean_target)
+                                if "text" in parsed_json:
+                                    answer = parsed_json["text"]
+                            except Exception:
+                                # Fallback raw string boundaries split if json parser hits malformed data
+                                for anchor in ['"text":"', '"text": "']:
+                                    if anchor in answer:
+                                        extracted = answer.split(anchor, 1)[1]
+                                        for stop_sign in ['","extras"', '",\n"extras"', '"\n"extras"']:
+                                            if stop_sign in extracted:
+                                                extracted = extracted.split(stop_sign, 1)[0]
+                                        answer = extracted.rstrip('"\n\t }]]')
+                                        break
                         
                         st.write(answer)
                         st.session_state.messages.append({"role": "assistant", "content": answer})
