@@ -1,70 +1,175 @@
 import streamlit as st
 import os
 
-# --- FROM WEEK 2/3: Import your LangGraph multi-tool agent brain ---
+# --- CORE LOGIC: Importing your perfectly working backend components ---
 from agent import get_agent, get_keys_pool
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 
-# --- 1. Page Configuration & Premium Executive CSS Styling ---
-st.set_page_config(page_title="AeroConcierge AI", layout="centered")
+# --- 1. Page Configuration ---
+st.set_page_config(page_title="Free AI Travel Agent", layout="wide", initial_sidebar_state="collapsed")
 
+# --- 2. Premium UI Design & Layout Injector (Matching Image Layout) ---
 st.markdown("""
     <style>
+    /* Global App Background Styling */
     .stApp {
-        background: radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 60%, #020617 100%);
-        color: #f1f5f9;
-        font-family: 'Inter', -apple-system, sans-serif;
+        background: linear-gradient(135deg, #fce7f3 0%, #fae8ff 50%, #e0f2fe 100%);
+        color: #1e293b;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
-    .main-header {
-        font-size: 2.75rem;
+    
+    /* Main Header Layout */
+    .hero-container {
+        text-align: center;
+        padding-top: 2.5rem;
+        padding-bottom: 1rem;
+    }
+    .main-title {
+        font-size: 2.5rem;
         font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        background: linear-gradient(135deg, #ffffff 20%, #60a5fa 60%, #c084fc 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: center;
-        margin-top: 1.5rem;
-        margin-bottom: 0.1rem;
+        color: #ea580c;
+        margin-bottom: 0.5rem;
     }
-    .sub-header {
-        font-size: 0.9rem;
-        color: #94a3b8;
-        text-align: center;
-        margin-bottom: 2.5rem;
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
+    .sub-title {
+        font-size: 1.1rem;
+        color: #475569;
         font-weight: 500;
+        max-width: 600px;
+        margin: 0 auto 1.5rem auto;
+        line-height: 1.5;
     }
-    .header-line {
-        height: 2px;
-        width: 50px;
-        background: linear-gradient(90deg, #3b82f6, #a855f7);
-        margin: 0 auto 1.2rem auto;
-        border-radius: 10px;
+    
+    /* Service Layout Cards System */
+    .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        max-width: 1100px;
+        margin: 0 auto 3rem auto;
+        padding: 0 1rem;
     }
-    input {
-        background-color: #1e293b !important;
-        color: #f8fafc !important;
-        border: 1px solid #475569 !important;
-        border-radius: 10px !important;
+    .feature-card {
+        background-color: white;
+        border-radius: 20px;
+        padding: 2rem 1.5rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.04);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        cursor: pointer;
+        min-height: 250px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+    }
+    .card-yellow { background: linear-gradient(180deg, #fef08a 0%, #fefcd0 100%); }
+    .card-blue-light { background: linear-gradient(180deg, #bfdbfe 0%, #eff6ff 100%); }
+    .card-blue-dark { background: linear-gradient(180deg, #93c5fd 0%, #dbeafe 100%); }
+    .card-white { background: #ffffff; border: 1px solid #f1f5f9; }
+    
+    .card-title {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+    }
+    .card-desc {
+        font-size: 0.95rem;
+        color: #475569;
+        line-height: 1.4;
+    }
+    
+    /* Chat Message Interface Formatting */
+    .chat-container {
+        max-width: 850px;
+        margin: 0 auto 5rem auto;
+        padding: 1rem;
     }
     .stChatMessage {
-        background-color: rgba(30, 41, 59, 0.4) !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        border-radius: 12px !important;
+        background-color: white !important;
+        border-radius: 16px !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.02) !important;
+        margin-bottom: 1rem !important;
+        padding: 1rem !important;
     }
+    
+    /* Reposition Floating Input Bar to Screen Bottom */
+    div[data-testid="stChatInput"] {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 850px;
+        z-index: 99;
+        padding: 0 1rem;
+    }
+    div[data-testid="stChatInput"] textarea {
+        background-color: white !important;
+        color: #1e293b !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 30px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
+        padding: 12px 20px !important;
+    }
+    
+    /* Clean up default Streamlit branding layout elements */
+    #MainMenu, footer, header {visibility: hidden;}
+    .block-container {padding-top: 1rem !important; padding-bottom: 6rem !important;}
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="animated-container">', unsafe_allow_html=True)
-st.markdown('<h1 class="main-header">AeroConcierge AI</h1>', unsafe_allow_html=True)
-st.markdown('<div class="header-line"></div>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Autonomous Travel Intelligence & Verified Vector RAG Platform</p>', unsafe_allow_html=True)
+# --- 3. Render Top Branding Hero Content ---
+st.markdown("""
+<div class="hero-container">
+    <div class="main-title">Begin Your Next Adventure 🪂</div>
+    <div class="sub-title">
+        Hi! I'm your AI Trip Partner, here to make trip planning easy. Share your travel details, 
+        and I'll make your ideal plan! Happy Travels! ✈️<br>
+        <span style="font-size: 0.9rem; color: #64748b;">Start by choosing priority service or just describing your needs below!</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-# Clean extract key strings list
+# --- 4. Render Service Display Cards (Visual Layer Grid) ---
+st.markdown("""
+<div class="cards-grid">
+    <div class="feature-card card-yellow">
+        <div>
+            <div class="card-title">Build Itinerary</div>
+            <div class="card-desc">Tailored completely for your preferences and days.</div>
+        </div>
+        <div style="font-size: 3rem; text-align: right;">📍</div>
+    </div>
+    <div class="feature-card card-blue-light">
+        <div>
+            <div class="card-title">Find Flights</div>
+            <div class="card-desc">Smart deals tracked across multiple global sources.</div>
+        </div>
+        <div style="font-size: 3rem; text-align: right;">📅</div>
+    </div>
+    <div class="feature-card card-blue-dark">
+        <div>
+            <div class="card-title">Find Hotels</div>
+            <div class="card-desc">Perfect accommodation metrics matched to your needs.</div>
+        </div>
+        <div style="font-size: 3rem; text-align: right;">🏨</div>
+    </div>
+    <div class="feature-card card-white">
+        <div>
+            <div class="card-title">Not sure?</div>
+            <div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div>
+        </div>
+        <div style="font-size: 3rem; text-align: right;">🔮</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# --- 5. Extract Multi-Key Verification Tokens Pool Safely ---
 keys_list = get_keys_pool()
 
 @st.cache_resource
@@ -77,15 +182,17 @@ def load_data(_key):
         files = [f for f in os.listdir(data_folder) if f.lower().endswith('.pdf')]
         for f in files:
             file_path = os.path.join(data_folder, f)
-            loader = PyPDFLoader(file_path)
-            all_pages.extend(loader.load_and_split())
+            try:
+                loader = PyPDFLoader(file_path)
+                all_pages.extend(loader.load_and_split())
+            except Exception:
+                continue
     if all_pages:
         embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
         return FAISS.from_documents([all_pages[0]], embeddings)
     return None
 
 def safe_vector_search(_query):
-    """Fallback vector search engine using active keys pool."""
     if not keys_list:
         return ""
     for current_key in keys_list:
@@ -99,35 +206,38 @@ def safe_vector_search(_query):
             continue
     return ""
 
+# Initialize chat records
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 try:
-    st.session_state.agent = get_agent()
+    if "agent" not in st.session_state or st.session_state.agent is None:
+        st.session_state.agent = get_agent()
 except Exception:
     st.session_state.agent = None
 
-# Render active layout session items
+# Wrap chat container for spacing control
+st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+
+# Render active layout chat items from history
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
-        st.write(msg["content"])
+        st.markdown(msg["content"])
 
-user_input = st.chat_input("Inquire regarding itineraries, global budgets, or local attractions...")
+# --- 6. Execution Processing Layer ---
+user_input = st.chat_input("Type your needs... (e.g., Plan a budget trip to Arunachalam, things to do in Hanamkonda)")
 
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
-        st.write(user_input)
+        st.markdown(user_input)
 
-    # Dynamic evaluation check string
     is_weather_query = any(k in user_input.lower() for k in ["weather", "temp", "temperature", "forecast"])
 
     with st.chat_message("assistant"):
         if is_weather_query:
-            # FIXED: REMOVED HARCODED PLACES ARRAY. Automatically filter phrase words out.
             stop_words = ["weather", "temp", "temperature", "forecast", "in", "at", "for", "of", "what", "is", "the", "how", "like"]
             clean_words = [w.strip("?,.¡!").capitalize() for w in user_input.split() if w.lower() not in stop_words]
-            
             target_district = " ".join(clean_words) if clean_words else "Requested Destination"
 
             st.markdown(f"### ☀️ {target_district} 6-Day Visual Forecast Matrix")
@@ -166,16 +276,14 @@ if user_input:
             st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {target_district}."})
 
         else:
-            # FIXED: REMOVED FORCED METHOD AND CONTEXT STUFFING BLOCKS. Passes pure text directly.
             if st.session_state.agent is None:
                 st.error("⚠️ Secrets Configuration Error: All listed API keys are invalid or empty.")
             else:
                 with st.spinner("Processing expert travel logic..."):
                     try:
-                        # Agent automatically chooses the right tool based on your question!
                         result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
                         answer = str(result["messages"][-1].content)
-                        st.write(answer)
+                        st.markdown(answer)
                         st.session_state.messages.append({"role": "assistant", "content": answer})
                     except Exception:
                         st.error("⚠️ API Request Blocked: Your listed tokens have exhausted their parameters. Update your backend secret strings.")
