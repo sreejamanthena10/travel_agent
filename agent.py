@@ -58,7 +58,7 @@ def get_agent():
         keys_pool = [st.secrets["GEMINI_API_KEY"]]
 
     if not keys_pool:
-        print("Error: No Gemini API Keys discovered within Streamlit Secrets configuration layers.")
+        st.error("Error: No Gemini API Keys discovered within Streamlit Secrets configuration layers.")
         return None
 
     # 2. Loop through keys until an active endpoint initializes successfully
@@ -119,12 +119,10 @@ def get_agent():
                 
             agent.invoke = secured_invoke
             
-            # Key verification validation block passed safely
             return agent
 
         except Exception as e:
-            print(f"API Key index {index} failed with exception: {str(e)}. Swapping to failover array resource...")
+            # Continue looping to try the next key if this one hits a limit
             continue
             
-    print("CRITICAL FAILURE: Exhausted all keys in the array pool without establishing a connection link.")
     return None
