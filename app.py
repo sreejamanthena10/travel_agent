@@ -96,22 +96,38 @@ st.markdown("""
         line-height: 1.4;
     }
     
-    /* Portal Form Containers */
-    .form-box {
-        background-color: white;
-        padding: 2.5rem;
-        border-radius: 24px;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
-        max-width: 800px;
-        margin: 0 auto 2rem auto;
-        border: 1px solid rgba(255, 255, 255, 0.7);
-    }
-    
     /* Chat Message Interface Formatting */
     .chat-container {
         max-width: 850px;
         margin: 2rem auto 5rem auto;
         padding: 1rem;
+    }
+    .stChatMessage {
+        background-color: white !important;
+        border-radius: 16px !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.02) !important;
+        margin-bottom: 1rem !important;
+        padding: 1rem !important;
+    }
+    
+    /* Reposition Floating Input Bar to Screen Bottom */
+    div[data-testid="stChatInput"] {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 850px;
+        z-index: 99;
+        padding: 0 1rem;
+    }
+    div[data-testid="stChatInput"] textarea {
+        background-color: white !important;
+        color: #1e293b !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 30px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
+        padding: 12px 20px !important;
     }
     
     /* Clean up default Streamlit branding layout elements */
@@ -120,15 +136,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize interactive state parameters inside memory storage
-if "portal_mode" not in st.session_state:
-    st.session_state.portal_mode = "Main"  
+# Initialize persistent mode memories inside session tracking storage
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "form_submitted" not in st.session_state:
-    st.session_state.form_submitted = False
-if "submitted_prompt" not in st.session_state:
-    st.session_state.submitted_prompt = ""
+if "current_destination" not in st.session_state:
+    st.session_state.current_destination = "Arunachalam" # Vetted smart default location tracker
 
 # --- 3. Render Top Branding Hero Content ---
 st.markdown("""
@@ -141,105 +153,39 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 4. RENDER DYNAMIC VIEWPORT ---
-if st.session_state.portal_mode == "Main":
-    st.markdown('<p style="text-align:center; color:#64748b; margin-top:-1rem; margin-bottom:2rem;">Start by choosing priority service or just describing your needs below!</p>', unsafe_allow_html=True)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        if st.button("", key="btn_itinerary"):
-            st.session_state.portal_mode = "Itinerary"
-            st.rerun()
-        st.markdown('<div class="feature-card card-yellow" style="margin-top: -55px;"><div><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences and days.</div></div><div style="font-size: 3rem; text-align: right;">📍</div></div>', unsafe_allow_html=True)
+# Tracking click triggers
+click_prompt = ""
 
-    with col2:
-        if st.button("", key="btn_flights"):
-            st.session_state.portal_mode = "Flights"
-            st.rerun()
-        st.markdown('<div class="feature-card card-blue-light" style="margin-top: -55px;"><div><div class="card-title">Find Flights</div><div class="card-desc">Smart deals tracked across multiple global sources.</div></div><div style="font-size: 3rem; text-align: right;">📅</div></div>', unsafe_allow_html=True)
+# --- 4. Render Service Display Cards System ---
+st.markdown(f'<p style="text-align:center; color:#ea580c; font-weight:600; margin-top:-1rem; margin-bottom:2rem;">Current target track: {st.session_state.current_destination} (Type a new location below at any time to update)</p>', unsafe_allow_html=True)
 
-    with col3:
-        if st.button("", key="btn_hotels"):
-            st.session_state.portal_mode = "Hotels"
-            st.rerun()
-        st.markdown('<div class="feature-card card-blue-dark" style="margin-top: -55px;"><div><div class="card-title">Find Hotels</div><div class="card-desc">Perfect accommodation metrics matched to your needs.</div></div><div style="font-size: 3rem; text-align: right;">🏨</div></div>', unsafe_allow_html=True)
+col1, col2, col3, col4 = st.columns(4)
 
-    with col4:
-        if st.button("", key="btn_suggest"):
-            st.session_state.portal_mode = "Main"
-        st.markdown('<div class="feature-card card-white" style="margin-top: -55px;"><div><div class="card-title">Not sure?</div><div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div></div><div style="font-size: 3rem; text-align: right;">🔮</div></div>', unsafe_allow_html=True)
+with col1:
+    if st.button("", key="btn_itinerary"):
+        click_prompt = f"Build a comprehensive scannability-optimized daily travel itinerary spanning a few days for: {st.session_state.current_destination}"
+        st.session_state.messages.append({"role": "user", "content": f"📍 Build full Itinerary for **{st.session_state.current_destination}**"})
+    st.markdown('<div class="feature-card card-yellow" style="margin-top: -55px;"><div><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences and days.</div></div><div style="font-size: 3rem; text-align: right;">📍</div></div>', unsafe_allow_html=True)
 
-elif st.session_state.portal_mode == "Hotels":
-    st.markdown('<div class="form-box">', unsafe_allow_html=True)
-    st.subheader("🏨 Find the Perfect Accommodation Matrix")
-    with st.form("hotel_form"):
-        destination = st.text_input("Where are you traveling to?", placeholder="e.g. America, Paris, Hanamkonda")
-        budget = st.text_input("What is your total or nightly budget?", placeholder="e.g. ₹5,777, $150/night")
-        preferences = st.text_input("Any specific amenities or preferences? (Optional)", placeholder="e.g. Near temple, free Wi-Fi, swimming pool")
-        col_f1, col_f2 = st.columns([1, 4])
-        with col_f1:
-            submit = st.form_submit_button("Search Hotels")
-        with col_f2:
-            if st.form_submit_button("Back to Main Menu"):
-                st.session_state.portal_mode = "Main"
-                st.rerun()
-        if submit:
-            if destination and budget:
-                st.session_state.submitted_prompt = f"Find a detailed budget hotel matrix with choices, rates, and features for destination: {destination} with a budget allocation parameters of: {budget}. Extra preferences: {preferences}"
-                st.session_state.form_submitted = True
-                st.session_state.messages.append({"role": "user", "content": f"Search Hotels in **{destination}** within a budget of **{budget}**"})
-            else:
-                st.error("Please fill out both the Destination and Budget fields.")
-    st.markdown('</div>', unsafe_allow_html=True)
+with col2:
+    if st.button("", key="btn_flights"):
+        click_prompt = f"Find flight travel route options, flight carrier connections, tracking deals, and estimated pricing for traveling to: {st.session_state.current_destination}"
+        st.session_state.messages.append({"role": "user", "content": f"📅 Search Flights to **{st.session_state.current_destination}**"})
+    st.markdown('<div class="feature-card card-blue-light" style="margin-top: -55px;"><div><div class="card-title">Find Flights</div><div class="card-desc">Smart deals tracked across multiple global sources.</div></div><div style="font-size: 3rem; text-align: right;">📅</div></div>', unsafe_allow_html=True)
 
-elif st.session_state.portal_mode == "Flights":
-    st.markdown('<div class="form-box">', unsafe_allow_html=True)
-    st.subheader("✈️ Track Smart Flight Routes & Deals")
-    with st.form("flight_form"):
-        origin = st.text_input("Departure City / Airport Code", placeholder="e.g. Hyderabad (HYD)")
-        destination = st.text_input("Arrival Destination Country or City", placeholder="e.g. America, Delhi, London")
-        dates = st.text_input("Travel Dates or Month", placeholder="e.g. Next month, June 15-20")
-        flight_budget = st.text_input("Flight Ticket Budget Limit", placeholder="e.g. ₹60,000, $800")
-        col_f1, col_f2 = st.columns([1, 4])
-        with col_f1:
-            submit = st.form_submit_button("Search Flights")
-        with col_f2:
-            if st.form_submit_button("Back to Main Menu"):
-                st.session_state.portal_mode = "Main"
-                st.rerun()
-        if submit:
-            if origin and destination:
-                st.session_state.submitted_prompt = f"Find comprehensive flight route routes, tracking deals, airline carriers, and pricing structures from {origin} to {destination} for dates {dates} within a price cap framework of {flight_budget}"
-                st.session_state.form_submitted = True
-                st.session_state.messages.append({"role": "user", "content": f"Find flights from **{origin}** to **{destination}** (Budget: {flight_budget})"})
-            else:
-                st.error("Please specify both an Origin city and a Destination.")
-    st.markdown('</div>', unsafe_allow_html=True)
+with col3:
+    if st.button("", key="btn_hotels"):
+        click_prompt = f"Find a detailed budget hotel matrix with multiple comfort choices, nightly rates, and features for destination: {st.session_state.current_destination}"
+        st.session_state.messages.append({"role": "user", "content": f"🏨 Find Budget Hotels in **{st.session_state.current_destination}**"})
+    st.markdown('<div class="feature-card card-blue-dark" style="margin-top: -55px;"><div><div class="card-title">Find Hotels</div><div class="card-desc">Perfect accommodation metrics matched to your needs.</div></div><div style="font-size: 3rem; text-align: right;">🏨</div></div>', unsafe_allow_html=True)
 
-elif st.session_state.portal_mode == "Itinerary":
-    st.markdown('<div class="form-box">', unsafe_allow_html=True)
-    st.subheader("🔮 Tailor an Autonomous Global Itinerary")
-    with st.form("itinerary_form"):
-        dest = st.text_input("Target Vacation Destination", placeholder="e.g. Switzerland, Arunachalam, Goa")
-        days = st.text_input("Number of Days", placeholder="e.g. 3 Days, 1 Week")
-        vibe = st.text_input("Trip Style / Vibe", placeholder="e.g. Spiritual pilgrimage, adventurous, family vacation, beach relaxation")
-        col_f1, col_f2 = st.columns([1, 4])
-        with col_f1:
-            submit = st.form_submit_button("Generate Itinerary")
-        with col_f2:
-            if st.form_submit_button("Back to Main Menu"):
-                st.session_state.portal_mode = "Main"
-                st.rerun()
-        if submit:
-            if dest and days:
-                st.session_state.submitted_prompt = f"Build a comprehensive travel itinerary layout for {dest} spanning over {days}. Style profile focus: {vibe}."
-                st.session_state.form_submitted = True
-                st.session_state.messages.append({"role": "user", "content": f"Build a **{days}** itinerary for **{dest}** ({vibe} style)"})
-            else:
-                st.error("Please enter both a Destination and the Number of Days.")
-    st.markdown('</div>', unsafe_allow_html=True)
+with col4:
+    if st.button("", key="btn_suggest"):
+        click_prompt = f"Show me top landmarks, hidden spots, and sightseeing items near: {st.session_state.current_destination}"
+        st.session_state.messages.append({"role": "user", "content": f"🔮 Explore Sights near **{st.session_state.current_destination}**"})
+    st.markdown('<div class="feature-card card-white" style="margin-top: -55px;"><div><div class="card-title">Not sure?</div><div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div></div><div style="font-size: 3rem; text-align: right;">🔮</div></div>', unsafe_allow_html=True)
 
-# --- 5. AGENT EXECUTION UTILITIES ---
+# --- 5. AGENT CONFIGURATION UTILITIES ---
 keys_list = get_keys_pool()
 
 @st.cache_resource
@@ -268,41 +214,45 @@ try:
 except Exception:
     st.session_state.agent = None
 
+# Wrap chat viewport layout container
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 
+# Render conversation logs
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-chat_input_val = st.chat_input("Type a message or select an operation service option card above...")
-input_source_prompt = ""
+chat_input_val = st.chat_input("Type a destination... (e.g., America, Arunachalam, Hanamkonda)")
+user_input = click_prompt if click_prompt else chat_input_val
 
-if st.session_state.form_submitted:
-    input_source_prompt = st.session_state.submitted_prompt
-    st.session_state.form_submitted = False  
-    st.session_state.submitted_prompt = ""
-elif chat_input_val:
-    input_source_prompt = chat_input_val
+# If the user typed a raw destination into the bar, update our active destination tracking parameter
+if chat_input_val:
+    # Basic logic processing layer to cleanly isolate location noun chains from sentences
+    stop_phrases = ["plan a trip to", "hotels in", "flights to", "travel to", "go to", "weather in"]
+    cleaned_dest = chat_input_val.lower()
+    for phrase in stop_phrases:
+        cleaned_dest = cleaned_dest.replace(phrase, "")
+    
+    words = [w.strip("?,.¡!").capitalize() for w in cleaned_dest.split()]
+    if words:
+        st.session_state.current_destination = " ".join(words)
+
     st.session_state.messages.append({"role": "user", "content": chat_input_val})
     with st.chat_message("user"):
         st.markdown(chat_input_val)
 
 # --- 6. CORE LOGIC PROCESSOR NODE ---
-if input_source_prompt:
-    is_weather_query = any(k in input_source_prompt.lower() for k in ["weather", "temp", "temperature", "forecast"])
+if user_input:
+    is_weather_query = any(k in user_input.lower() for k in ["weather", "temp", "temperature", "forecast"])
 
     with st.chat_message("assistant"):
         if is_weather_query:
-            stop_words = ["weather", "temp", "temperature", "forecast", "in", "at", "for", "of", "what", "is", "the", "how", "like"]
-            clean_words = [w.strip("?,.¡!").capitalize() for w in input_source_prompt.split() if w.lower() not in stop_words]
-            target_district = " ".join(clean_words) if clean_words else "Requested Destination"
-
-            st.markdown(f"### ☀️ {target_district} 6-Day Visual Forecast Matrix")
+            st.markdown(f"### ☀️ {st.session_state.current_destination} 6-Day Visual Forecast Matrix")
             matrix_slot = st.empty()
-            matrix_slot.info(f"🔄 Connecting with weather satellite tools for {target_district}...")
+            matrix_slot.info(f"🔄 Connecting with weather satellite tools for {st.session_state.current_destination}...")
             
             st.markdown("---")
-            st.markdown(f"### 🚨 1-Second Heatwave Action Protocols ({target_district})")
+            st.markdown(f"### 🚨 1-Second Heatwave Action Protocols ({st.session_state.current_destination})")
             st.markdown("* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay completely indoors.")
             st.markdown("* 💧 **Hydration Matrix:** Drink water or electrolyte solutions every 20 minutes.")
             st.markdown("* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose cotton clothing.")
@@ -311,7 +261,7 @@ if input_source_prompt:
                 matrix_slot.warning("⚠️ All listed API keys are exhausted. Please supply an active token inside your panel.")
             else:
                 try:
-                    result = st.session_state.agent.invoke({"messages": [("user", input_source_prompt)]})
+                    result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
                     answer = str(result["messages"][-1].content)
                     
                     matrix_slot.markdown(
@@ -328,7 +278,7 @@ if input_source_prompt:
                 except Exception:
                     matrix_slot.warning("⚠️ Connected API tokens out of query calls limit.")
             
-            st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {target_district}."})
+            st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {st.session_state.current_destination}."})
 
         else:
             if st.session_state.agent is None:
@@ -336,11 +286,10 @@ if input_source_prompt:
             else:
                 with st.spinner("Processing expert travel logic..."):
                     try:
-                        result = st.session_state.agent.invoke({"messages": [("user", input_source_prompt)]})
+                        result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
                         answer = str(result["messages"][-1].content)
                         st.markdown(answer)
                         st.session_state.messages.append({"role": "assistant", "content": answer})
-                        st.session_state.portal_mode = "Main"
                     except Exception:
                         st.error("⚠️ API Request Blocked: Your listed tokens have exhausted their parameters. Update your backend secret strings.")
 
