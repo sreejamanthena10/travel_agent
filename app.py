@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import re
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
@@ -30,10 +31,8 @@ def load_data(_key):
             all_pages.extend(loader.load_and_split())
             
     if all_pages:
-        # Use the newest stable model ID
         embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
         
-        # --- THE FIX ---
         # 1. Initialize with just the FIRST document to ensure 1:1 length
         vector_db = FAISS.from_documents([all_pages[0]], embeddings)
         
@@ -48,7 +47,6 @@ def load_data(_key):
 # --- FIXED: Use st.cache_resource with a key dependency to avoid initialization loops ---
 @st.cache_resource
 def get_cached_agent(_key):
-    # Lock the environment key securely before setup runs
     os.environ["GOOGLE_API_KEY"] = _key
     return get_agent()
 
@@ -59,39 +57,32 @@ if "messages" not in st.session_state:
 # --- 4. Main App Logic ---
 if api_key:
     try:
-        # Set environment variable safely for internal tracking tools
         os.environ["GOOGLE_API_KEY"] = api_key
-        
-        # Load Vector Store
         vector_db = load_data(api_key)
 
-        # FIXED: Only spin up the agent inside the authorization safety check gate
         if "agent" not in st.session_state:
             st.session_state.agent = get_cached_agent(api_key)
 
         if vector_db:
-            # --- FROM WEEK 2: Dynamic Layout Description ---
             st.write("I can search the web and check the weather for you!")
 
-            # --- FROM WEEK 2: Render past chat messages onto the screen ---
+            # Render past chat messages onto the screen
             for msg in st.session_state.messages:
                 with st.chat_message(msg["role"]):
                     st.write(msg["content"])
 
-            # --- FROM WEEK 2: User input layout box ---
+            # User input layout box
             user_input = st.chat_input("Ask me a question...")
 
             if user_input:
-                # 1. Show and save what the user typed (Week 2 logic)
                 st.session_state.messages.append({"role": "user", "content": user_input})
                 with st.chat_message("user"):
                     st.write(user_input)
 
-                # --- INTEGRATION STEP: Search Week 1 PDFs for matching context ---
+                # Search Week 1 PDFs for matching context
                 docs = vector_db.similarity_search(user_input, k=3)
                 context = "\n".join([d.page_content for d in docs])
                 
-                # Combine Week 1 Context chunks smoothly with the active Week 2 user inquiry
                 combined_prompt = (
                     f"Use this extracted context from the user's travel documents to help answer if relevant:\n"
                     f"{context}\n\n"
@@ -100,16 +91,22 @@ if api_key:
                     f"(like real-time weather or web details), use your tools automatically."
                 )
 
-                # 2. Get the AI's answer using tools (Week 2 framework + LangGraph key structure fix)
+                # Get the AI's answer using tools
                 with st.chat_message("assistant"):
                     with st.spinner("Using tools to find the answer..."):
                         
-                        # Pass prompt structure seamlessly to your agent session loop
                         result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
                         answer = result["messages"][-1].content
                         
+                        # --- GUARANTEED PARSING FILTER ---
+                        if isinstance(answer, str) and '"text":' in answer:
+                            # Use regex pattern matching to isolate only the target string segment
+                            match = re.search(r'"text"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', answer)
+                            if match:
+                                # Clean escape characters from the extracted text string safely
+                                answer = match.group(1).encode().decode('unicode_escape')
+                        
                         st.write(answer)
-                        # Save assistant response to chat history memory array
                         st.session_state.messages.append({"role": "assistant", "content": answer})
                         
         else:
