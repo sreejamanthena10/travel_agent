@@ -71,15 +71,19 @@ st.markdown('<h1 class="main-header">AeroConcierge AI</h1>', unsafe_allow_html=T
 st.markdown('<div class="header-line"></div>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Autonomous Travel Intelligence & Verified Vector RAG Platform</p>', unsafe_allow_html=True)
 
-# Verification Checkpoint for Key Pools
-api_key = None
-if "GEMINI_API_KEYS" in st.secrets and len(st.secrets["GEMINI_API_KEYS"]) > 0:
-    api_key = st.secrets["GEMINI_API_KEYS"][0]
+# SAFE CHECKPOINT: Extract fallback key array pool strings
+keys_pool = []
+if "GEMINI_API_KEYS" in st.secrets:
+    keys_pool = [k for k in st.secrets["GEMINI_API_KEYS"] if k and len(str(k)) > 10]
 elif "GEMINI_API_KEY" in st.secrets:
-    api_key = st.secrets["GEMINI_API_KEY"]
-else:
-    st.error("⚠️ Environment Configuration Missing: Please verify 'GEMINI_API_KEYS' exists in your secrets.")
+    keys_pool = [st.secrets["GEMINI_API_KEY"]]
+
+if not keys_pool:
+    st.error("⚠️ Secrets Configuration Missing: Please declare active key tokens inside your Streamlit Dashboard panel.")
     st.stop()
+
+# Fallback embedding key assignment
+embedding_key = keys_pool[0]
 
 @st.cache_resource
 def load_data(_key): 
@@ -111,7 +115,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 try:
-    # CRITICAL INJECTION: Instantiate the agent fresh on failover without memory caching
+    # Always load the agent dynamically to prevent old bricked configurations from caching
     if "agent" not in st.session_state or st.session_state.agent is None:
         st.session_state.agent = get_agent()
 
@@ -126,7 +130,7 @@ try:
         with st.chat_message("user"):
             st.write(user_input)
 
-        context = fast_vector_search(user_input, api_key)
+        context = fast_vector_search(user_input, embedding_key)
         
         combined_prompt = (
             "Use this extracted context from the user's travel documents to help answer if relevant:\n"
@@ -155,13 +159,18 @@ try:
                 st.markdown("* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose, light breathable cotton fabrics.")
 
                 try:
+                    if st.session_state.agent is None:
+                        st.session_state.agent = get_agent()
                     result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
                     answer = str(result["messages"][-1].content)
                 except Exception:
-                    # If current agent instance token pool hit a 429 mid-session, reconstruct agent immediately with the next key
+                    # Clear out bad initialization state and force step-forward fallbacks immediately
                     st.session_state.agent = get_agent()
-                    result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
-                    answer = str(result["messages"][-1].content)
+                    if st.session_state.agent:
+                        result = st.session_state.agent.invoke({"messages": [("user", user_input)]})
+                        answer = str(result["messages"][-1].content)
+                    else:
+                        answer = "⚠️ System is cycling through API keys to re-establish connection. Please submit your request once more."
                 
                 if '"text":' in answer:
                     try:
@@ -187,12 +196,17 @@ try:
             else:
                 with st.spinner("Processing expert travel logic..."):
                     try:
+                        if st.session_state.agent is None:
+                            st.session_state.agent = get_agent()
                         result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
                         answer = str(result["messages"][-1].content)
                     except Exception:
                         st.session_state.agent = get_agent()
-                        result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
-                        answer = str(result["messages"][-1].content)
+                        if st.session_state.agent:
+                            result = st.session_state.agent.invoke({"messages": [("user", combined_prompt)]})
+                            answer = str(result["messages"][-1].content)
+                        else:
+                            answer = "⚠️ System is cycling through API keys to re-establish connection. Please submit your request once more."
                         
                     st.write(answer)
                     st.session_state.messages.append({"role": "assistant", "content": answer})
