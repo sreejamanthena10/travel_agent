@@ -1,110 +1,64 @@
-import json
 import os
 import streamlit as st
+import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
-from tools import my_tools
-
-def clean_agent_output(result):
-    """Safely extracts pure markdown text and strips metadata/signature leaks."""
-    if not result or "messages" not in result:
-        return result
-    messages = result["messages"]
-    if not messages:
-        return result
-    last_msg = messages[-1]
-    if hasattr(last_msg, "content"):
-        if isinstance(last_msg.content, list):
-            extracted = []
-            for chunk in last_msg.content:
-                if isinstance(chunk, dict) and "text" in chunk:
-                    extracted.append(chunk["text"])
-                elif isinstance(chunk, str):
-                    extracted.append(chunk)
-            last_msg.content = "\n".join(extracted)
-            
-        if isinstance(last_msg.content, str):
-            text = last_msg.content.strip()
-            if "'text':" in text or '"text":' in text:
-                for anchor in ["'text': '", '"text": "', "'text':", '"text":']:
-                    if anchor in text:
-                        try:
-                            text = text.split(anchor, 1)[1]
-                            for term in ["', 'extras'", '", "extras"', "',\n'extras'", '",\n"extras"']:
-                                if term in text:
-                                    text = text.split(term, 1)[0]
-                            break
-                        except:
-                            pass
-            last_msg.content = text.replace(r'\"', '"').rstrip("'\" \n\t}]")
-    return result
+# Import your real live tools from your tools file
+from tools import search_flights, search_hotels, get_weather, plan_itinerary
 
 def get_keys_pool():
-    """Extracts a clean list of string parameters from secrets."""
-    keys_pool = []
-    if "GEMINI_API_KEYS" in st.secrets:
-        raw_keys = st.secrets["GEMINI_API_KEYS"]
-        keys_pool = [k.strip().replace('"', '').replace("'", "") for k in raw_keys.split(",") if k.strip()]
-    elif "GEMINI_API_KEY" in st.secrets:
-        keys_pool = [st.secrets["GEMINI_API_KEY"].strip()]
-    return [k for k in keys_pool if k.strip()]
-
-@st.cache_resource(show_spinner=False)
-def compile_secure_agent():
-    """Compiles and validates the agent framework across the available resource tokens pool exactly once."""
-    keys_pool = get_keys_pool()
-    if not keys_pool:
-        return None
-
-    for current_key in keys_pool:
-        try:
-            os.environ["GOOGLE_API_KEY"] = current_key
-            llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
-            
-            # Live Validation Guard Ping
-            llm.invoke("ping")
-
-            system_instructions = (
-                "You are the AeroConcierge AI Global Travel Expert specialized in instant 2-second scannability.\n"
-                "You map out daily travel schedules, price-tiered accommodation options, and precise flight matrices.\n\n"
-                
-                "CRITICAL CHRONOLOGICAL FLIGHT DATE RULE:\n"
-                "When a user provides specific travel dates in their query (e.g., June 15, 2026), you MUST strictly read, extract, "
-                "and pass those exact dates to your search tools. Your output flight itinerary matrix table MUST reflect "
-                "the planes flying on those specific dates. Never change the dates or generalize them.\n\n"
-                
-                "FAIL-SAFE INSTRUCTION RULE:\n"
-                "If search tools time out, encounter error walls, or run out of calls, use your internal global knowledge base "
-                "to instantly construct highly realistic, comprehensive flight route carrier listings, estimated price figures, "
-                "and accommodation options for the specified location and dates in under 2 seconds. Never present error tracebacks or apologies.\n\n"
-                
-                "DESIGN PRINCIPLES:\n"
-                "1. NO walls of text. Use bulleted grids, markdown charts, and checkboxes.\n"
-                "2. LOCAL DESIGN RULES: For queries targeting Telangana (Hanamkonda, Warangal, Karimnagar), immediately emphasize "
-                "prominent architectural and historical hotspots like the Thousand Pillar Temple, Warangal Fort, and Bhadrakali Temple using clean icons.\n"
-                "3. ACCOMMODATIONS MATRIX: Divide into Budget (🎒 Stays/Hostels), Mid-tier (🏨 Family Comfort), and Luxury (💎 5-Star Resorts).\n\n"
-                
-                "FLIGHT MATRIX FORMAT REQUIREMENT:\n"
-                "### 📅 Plane Schedules & Routes: [Origin] to [Destination]\n"
-                "**Selected Travel Window:** [Exact Date Mentioned in Query]\n"
-                "| Airline Carrier | Flight No. | Departure -> Arrival | Est. Return Ticket Rate | Status |\n"
-                "| :--- | :--- | :--- | :--- | :--- |\n"
-                "| IndiGo / Air India | 6E-2134 | 06:15 -> 08:45 | ₹6,500 / $ Amount | 🟢 Available |"
-            )
-
-            agent = create_react_agent(llm, tools=my_tools, prompt=system_instructions)
-            original_invoke = agent.invoke
-            
-            def secured_invoke(*args, **kwargs):
-                return clean_agent_output(original_invoke(*args, **kwargs))
-                
-            agent.invoke = secured_invoke
-            return agent
-            
-        except Exception:
-            continue
-    return None
+    """Safely extracts and parses the comma-separated key pool string from Streamlit Secrets."""
+    if "GEMINI_API_KEYS" not in st.secrets:
+        return []
+    raw_keys = st.secrets["GEMINI_API_KEYS"]
+    # Splits by comma and cleans away any accidental blank spaces or trailing lines
+    return [k.strip() for k in raw_keys.split(",") if k.strip()]
 
 def get_agent():
-    """Thread-safe fast execution entrypoint access node."""
-    return compile_secure_agent()
+    """Cycles through the independent project keys pool to compile a warm, functional live agent thread."""
+    keys_pool = get_keys_pool()
+    
+    if not keys_pool:
+        print("❌ Critical Config Error: No keys found in GEMINI_API_KEYS secrets array.")
+        return None
+
+    # Loop through each separate project key in your secrets panel
+    for current_key in keys_pool:
+        try:
+            # 1. Configure the core Google Generative AI bindings with the active key
+            genai.configure(api_key=current_key)
+            
+            # 2. Initialize the official LangChain model instance explicitly wrapping that active key context
+            llm = ChatGoogleGenerativeAI(
+                model="gemini-2.5-flash",
+                google_api_key=current_key,
+                temperature=0.3
+            )
+            
+            # 3. Assemble your real-time travel toolkit array mapping to your true tools file
+            tools_list = [search_flights, search_hotels, get_weather, plan_itinerary]
+            
+            # 4. Compile the reactive state graph agent thread layout
+            compiled_react_agent = create_react_agent(llm, tools=tools_list)
+            
+            # 5. Lightweight verification check: Test if this specific project key has free quota space left
+            # We do a super fast execution check to see if Google accepts the call
+            test_response = llm.invoke("Check connection state: respond with exactly one word.")
+            
+            if test_response and test_response.content:
+                # If the verification check passes, this project key is completely healthy! Stop looking and return it.
+                return compiled_react_agent
+                
+        except Exception as e:
+            error_msg = str(e).lower()
+            # If this key hits a 429 quota block or a bad token 400 error, skip it immediately and try the next project key string!
+            if "429" in error_msg or "resource_exhausted" in error_msg or "invalid" in error_msg or "expired" in error_msg:
+                print(f"⚠️ Key slot exhausted or invalid, cycling safely to next independent project key...")
+                continue
+            else:
+                # If it's an unrelated code error, log it and keep testing the pool
+                print(f"⚠️ Internal verification warning: {error_msg}")
+                continue
+
+    # If the loop completes and every single key in the secrets panel failed verification, return None
+    return None
