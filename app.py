@@ -54,7 +54,7 @@ STYLE_SHEET = f"""
     .stApp {{ 
         background: {THEME_BG} !important; 
         color: {TEXT_COLOR} !important; 
-        font-family: 'Inter', sans-serif; Trim
+        font-family: 'Inter', sans-serif;
     }}
     @keyframes professionalGlideUp {{ 
         0% {{ opacity: 0; transform: translateY(20px); }} 
@@ -168,6 +168,7 @@ def execute_dynamic_budget_math(prompt_text):
     except Exception:
         return "⚠️ Error compiling dynamic mathematical budget allocations. Please verify numerical format strings inside your prompt parameters."
 
+# Initialize click_prompt globally at the root layout scale so it is never undefined
 click_prompt = ""
 
 # --- 5. Interactive Columns Setup ---
@@ -236,99 +237,42 @@ if user_input:
         st.session_state.messages.append({"role": "assistant", "content": math_answer})
         
     else:
-        loc = st.session_state.current_destination if st.session_state.current_destination else "Your Destination"
-        input_words = [w.strip("?,.¡!").lower() for w in user_input.split()]
-        
-        # FIXED: Weather query interceptor now dynamically generates forecast headers matching the requested location
-        weather_keywords = ["weather", "forecast", "climate", "temperature", "temp"]
-        is_weather_query = any(keyword in input_words for keyword in weather_keywords) and "report" not in input_words and "operations" not in input_words and not user_input.startswith("ACTION_")
-
-        if is_weather_query:
-            weather_output = (
-                f"### ☀️ {loc} 6-Day Regional Meteorological Forecast\n"
-                f"**Tracking Scope Parameters:** Verified climate readings for geographic area coordinates.\n\n"
-                "| Day | Condition | Temp (Low / High) | Rain % | Humidity |\n"
-                "| :--- | :---: | :---: | :---: | :---: |\n"
-                "| **Sun** (Today) | ☀️ *Sunny / Clear Skies* | 31°C / **41°C** | 0% | 22% |\n"
-                "| **Mon** | ☀️ *High Solar Intensity* | 32°C / **42°C** | 5% | 20% |\n"
-                "| **Tue** | 🌦️ *Afternoon Scatter Clouds* | 30°C / **40°C** | 15% | 35% |\n"
-                "| **Wed** | ☀️ *Clear / Light Wind* | 31°C / **41°C** | 5% | 24% |\n"
-                "| **Thu** | ☀️ *Intense Heat Gradients* | 32°C / **43°C** | 10% | 18% |\n"
-                "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 29°C / **39°C** | 15% | 40% |"
-            )
-            st.session_state.messages.append({"role": "assistant", "content": weather_output})
+        live_agent = st.session_state.cached_agent
+        if live_agent is None:
+            st.session_state.messages.append({"role": "assistant", "content": "❌ AI Studio Token Limit Warning: All configured API projects are currently out of processing quota. Please insert a valid key pool sequence or enable card billing options to run live real-time tools."})
         else:
-            live_agent = st.session_state.cached_agent
-            if live_agent is None:
-                # Dynamic generation loop when live keys hit a 429 breach
-                budget_match = re.search(r'(?:under|budget|within|cap|max|of)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:,\d+)*)', user_input, re.IGNORECASE)
-                budget_str = f" within a strict budget of ₹{budget_match.group(1)}" if budget_match else ""
-                
-                if "flight" in user_input.lower() or "ACTION_FLIGHTS" in user_input:
-                    fallback_ans = (
-                        f"### 📅 Plane Schedules & Routes: Heading to {loc}{budget_str}\n"
-                        f"**Current Operational Schedule Framework:** Active Calendar Window (2026)\n\n"
-                        f"| Airline Carrier | Flight No. | Departure -> Arrival | Est. Return Ticket Rate | Status |\n"
-                        f"| :--- | :--- | :--- | :--- | :--- |\n"
-                        f"| Premium Carrier | PC-523 | 06:15 -> 11:45 | Verified within limits | 🟢 Active |\n"
-                        f"| Regional Eco Jet | EJ-1007 | 14:30 -> 19:15 | Budget Compliant | 🟢 Active |\n"
-                        f"| National Flag Air | NA-342 | 21:00 -> 02:20 (+1) | Matches Constraints | 🟢 Active |\n\n"
-                        f"👉 *Note: If specific budget numbers were provided, these options are scaled dynamically to remain fully compliant with those caps.*"
-                    )
-                elif "hotel" in user_input.lower() or "ACTION_HOTELS" in user_input:
-                    fallback_ans = (
-                        f"### 🏨 Verified Accommodation Matrix inside: {loc}{budget_str}\n"
-                        f"**Geographic Matching:** All listed properties are physically located within real city boundaries.\n\n"
-                        f"| Tier Class | Accommodation Venue Name | Location Radius | Est. Nightly Rate |\n"
-                        f"| :--- | :--- | :--- | :--- |\n"
-                        f"| 🎒 Budget Stays | Central Transit Inn | Core City Center | Within specified limits |\n"
-                        f"| 🏨 Family Comfort | Metro Premium Suites | Mid-Town Hub | Budget Compliant |\n"
-                        f"| 💎 Luxury Resorts | Grand Executive Plaza | Premium Quarter | Matches Profile |"
-                    )
-                else:
-                    fallback_ans = (
-                        f"### 📍 AI Travel Agent Layout Blueprint\n\n"
-                        f"Your travel configuration has been processed cleanly for destination context: **{loc}**{budget_str}.\n\n"
-                        f"* **Itinerary Plan:** Customized sightseeing checkpoints are synchronized to local geography.\n"
-                        f"* **Transit Parameters:** Connecting carrier routes are verified.\n"
-                        f"* **Cost Ceiling Compliance:** All internal calculations respect your designated spend caps."
-                    )
-                st.session_state.messages.append({"role": "assistant", "content": fallback_ans})
-            else:
-                with st.spinner("Processing expert travel logic..."):
-                    try:
-                        date_match = re.search(r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(st|nd|rd|th)?(,\s+\d{4})?', user_input, re.IGNORECASE)
-                        extracted_date_context = f" on date {date_match.group(0)}" if date_match else ""
-                        refined_query = f"{user_input}{extracted_date_context}. Ensure all outputs present completely real, factually accurate data matching geographic parameters and user cost criteria."
-                        
-                        result = live_agent.invoke({"messages": [("user", refined_query)]})
-                        agent_messages = result.get("messages", [])
-                        answer = ""
-                        
-                        for msg in reversed(agent_messages):
-                            msg_type = getattr(msg, "type", "").lower()
-                            class_name = msg.__class__.__name__
-                            if "ai" in msg_type or "ai" in class_name.lower():
-                                if hasattr(msg, "content") and str(msg.content).strip():
-                                    answer = str(msg.content)
-                                    break
-                                    
-                        if not answer and agent_messages:
-                            last_msg = agent_messages[-1]
-                            if hasattr(last_msg, "content"): answer = str(last_msg.content)
-                            elif isinstance(last_msg, dict) and "content" in last_msg: answer = str(last_msg["content"])
-                            else: answer = str(last_msg)
+            with st.spinner("Processing expert travel logic..."):
+                try:
+                    date_match = re.search(r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(st|nd|rd|th)?(,\s+\d{4})?', user_input, re.IGNORECASE)
+                    extracted_date_context = f" on date {date_match.group(0)}" if date_match else ""
+                    refined_query = f"{user_input}{extracted_date_context}. Provide completely real, factually accurate real-time data matching this geographic scope parameter. Do not output mock data strings."
+                    
+                    result = live_agent.invoke({"messages": [("user", refined_query)]})
+                    agent_messages = result.get("messages", [])
+                    answer = ""
+                    
+                    for msg in reversed(agent_messages):
+                        msg_type = getattr(msg, "type", "").lower()
+                        class_name = msg.__class__.__name__
+                        if "ai" in msg_type or "ai" in class_name.lower():
+                            if hasattr(msg, "content") and str(msg.content).strip():
+                                answer = str(msg.content)
+                                break
+                                
+                    if not answer and agent_messages:
+                        last_msg = agent_messages[-1]
+                        if hasattr(last_msg, "content"): answer = str(last_msg.content)
+                        elif isinstance(last_msg, dict) and "content" in last_msg: answer = str(last_msg["content"])
+                        else: answer = str(last_msg)
 
-                        if answer.strip():
-                            st.session_state.messages.append({"role": "assistant", "content": answer})
-                        else:
-                            st.session_state.messages.append({"role": "assistant", "content": f"Configurations saved successfully for **{loc}**. Please specify if you want to print flights or hotel grids."})
-                            
-                    except Exception as e:
-                        # Adaptive routing failover matching parameters dynamically
-                        budget_match = re.search(r'(?:under|budget|within|cap|max|of)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:,\d+)*)', user_input, re.IGNORECASE)
-                        budget_str = f" within your ceiling constraint of ₹{budget_match.group(1)}" if budget_match else ""
-                        st.session_state.messages.append({"role": "assistant", "content": f"### 📍 AI Travel Agent Framework\n\nYour parameter parameters have been logged for **{loc}**{budget_str}. Let me know if you would like to render a detailed itinerary map layout or cross-reference accommodation logs!"})
+                    if answer.strip():
+                        st.session_state.messages.append({"role": "assistant", "content": answer})
+                    else:
+                        st.session_state.messages.append({"role": "assistant", "content": "⚠️ Core processing completed, but the live connection sequence returned an empty data stream layer."})
+                        
+                except Exception as e:
+                    error_str = str(e)
+                    st.session_state.messages.append({"role": "assistant", "content": f"❌ Real-Time Connection Interrupted: {error_str}"})
 
 # --- 7. UNIFIED VISUAL DISPLAY LAYER ---
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
