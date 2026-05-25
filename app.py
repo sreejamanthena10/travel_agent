@@ -153,6 +153,9 @@ def execute_dynamic_budget_math(prompt_text):
     except Exception:
         return "⚠️ Error compiling dynamic mathematical budget allocations. Please verify numerical format strings inside your prompt parameters."
 
+# BUG SOLVED: Initialize click_prompt globally at the root layout scale so it is never undefined
+click_prompt = ""
+
 # --- 5. Interactive Columns Setup ---
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -274,7 +277,6 @@ if user_input:
                         if "RESOURCE_EXHAUSTED" in error_str or "429" in error_str or "quota" in error_str.lower():
                             loc = st.session_state.current_destination if st.session_state.current_destination else "Your Destination"
                             
-                            # --- FIXED FALLBACK ROUTER: 100% DYNAMIC TO USER REQUESTED DESTINATION ---
                             if "cancel" in user_input.lower() or "reliability" in user_input.lower() or "dependency" in user_input.lower():
                                 fallback_ans = (
                                     f"### 📅 Airline Operations Reliability Report: Mapped for {loc}\n"
@@ -306,9 +308,8 @@ if user_input:
                                 )
                             else:
                                 fallback_ans = (
-                                    f"### 📍 AI Travel Concierge Assistant Blueprint\n\n"
-                                    f"Your travel request for *\"{user_input}\"* has been mapped cleanly to target destination context: **{loc}**.\n\n"
-                                    "* **Next Steps:** Let me know if you would like to render a customized **Flight pricing matrix table** or an organized **Hotel accommodations grid** matching your specific budget ceilings!"
+                                    f"### 📍 AI Travel Concierge Assistant Blueprint\n\nYour request for *\"{user_input}\"* was processed via backup local intelligence rails.\n\n"
+                                    "* **Next Steps:** Let me know if you would like to render a date-matched **Flight pricing matrix** chart or a detailed **Hotel accommodation table** matching your budget profile preferences!"
                                 )
                             st.session_state.messages.append({"role": "assistant", "content": fallback_ans})
                             st.rerun()
