@@ -235,7 +235,6 @@ if user_input:
             st.markdown(clean_user_display)
         st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # Exact full-word parsing logic to avoid unexpected weather displays completely
     input_words = [w.strip("?,.¡!").lower() for w in user_input.split()]
     weather_keywords = ["weather", "forecast", "temperature", "temp", "climate"]
     is_weather_query = any(keyword in input_words for keyword in weather_keywords) and not user_input.startswith("ACTION_")
@@ -263,7 +262,6 @@ if user_input:
             else:
                 with st.spinner("Processing expert travel logic..."):
                     try:
-                        # Extract explicit chronological dates from the user query
                         date_match = re.search(r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(st|nd|rd|th)?(,\s+\d{4})?', user_input, re.IGNORECASE)
                         extracted_date_context = f" on date {date_match.group(0)}" if date_match else ""
                         refined_query = f"{user_input}{extracted_date_context}. Ensure all flight tables explicitly reflect active schedules matching this timestamp context parameters."
@@ -271,7 +269,7 @@ if user_input:
                         # Execute framework graph state payload
                         result = live_agent.invoke({"messages": [("user", refined_query)]})
                         
-                        # --- UNIVERSAL MESSAGE EXTRACTOR LAYER (Fixes the silence bug) ---
+                        # --- UNIVERSAL MESSAGE EXTRACTOR LAYER ---
                         agent_messages = result.get("messages", [])
                         answer = ""
                         
