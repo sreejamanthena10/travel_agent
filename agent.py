@@ -49,10 +49,9 @@ def get_keys_pool():
         keys_pool = [st.secrets["GEMINI_API_KEY"].strip()]
     return [k for k in keys_pool if k.strip()]
 
-# CACHED SOURCE ALLOCATION: Authenticates exactly once to stop token quota drainage
 @st.cache_resource(show_spinner=False)
 def compile_secure_agent():
-    """Compiles and validates the agent framework across the available resource tokens pool."""
+    """Compiles and validates the agent framework across the available resource tokens pool exactly once."""
     keys_pool = get_keys_pool()
     if not keys_pool:
         return None
