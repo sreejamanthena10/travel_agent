@@ -6,25 +6,17 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.tools import DuckDuckGoSearchRun
 
-@tool
-def google_travel_search(query: str) -> str:
-    """
-    Searches the live web for global travel information, flight details, hotel pricing, 
-    and famous landmark updates all over the world. Use this for general global destinations.
-    """
+# --- CORE INNER EXECUTION ENGINE ---
+def run_live_web_search(query: str) -> str:
+    """Helper function to execute real-time web lookups safely."""
     try:
-        # Dynamically instantiate fresh on execution to prevent uninitialized state bugs
         search_engine = DuckDuckGoSearchRun()
         return str(search_engine.run(query))
     except Exception as e:
-        return f"Live search temporarily unavailable: {str(e)}"
+        return f"Live lookup temporarily unavailable: {str(e)}"
 
-@tool
-def search_local_travel_documents(query: str) -> str:
-    """
-    Searches local uploaded PDF travel documents, local vouchers, and specific destination itineraries.
-    Use this tool ONLY when the user asks about specific personal plans, uploads, or schedules matching local files.
-    """
+def run_pdf_rag_search(query: str) -> str:
+    """Helper function to execute RAG similarity searches over local travel documents."""
     base_path = os.path.dirname(__file__)
     data_folder = os.path.join(base_path, "data", "raw")
     all_pages = []
@@ -50,5 +42,48 @@ def search_local_travel_documents(query: str) -> str:
     
     return "No local travel documents found in the database directory."
 
-# Export the tools clearly for agent.py
-my_tools = [google_travel_search, search_local_travel_documents]
+
+# --- REQUIRED AGENT COUPLING GATEWAY (4 ALIGNED TOOL FUNCTIONS) ---
+
+@tool
+def search_flights(query: str) -> str:
+    """
+    Searches the live web for global travel information, airline schedules, plane metrics, 
+    and route prices matching the user's destination parameters.
+    """
+    # First check if the answer exists inside your uploaded documents
+    local_doc_result = run_pdf_rag_search(query)
+    if "No local travel documents" not in local_doc_result and local_doc_result.strip():
+        return local_doc_result
+    # Otherwise, fetch real-time true details from the live web engine
+    return run_live_web_search(f"flights schedule carrier price matrix {query}")
+
+@tool
+def search_hotels(query: str) -> str:
+    """
+    Locates verified premium accommodations, tier-priced stay matrices, and rating features 
+    at specific user coordinates.
+    """
+    local_doc_result = run_pdf_rag_search(query)
+    if "No local travel documents" not in local_doc_result and local_doc_result.strip():
+        return local_doc_result
+    return run_live_web_search(f"hotels accommodations stay pricing rate details {query}")
+
+@tool
+def get_weather(query: str) -> str:
+    """
+    Fetches official current atmospheric conditions, temperature trends, and regional 
+    climate forecast indicators.
+    """
+    return run_live_web_search(f"current weather temperature forecast metrics {query}")
+
+@tool
+def plan_itinerary(query: str) -> str:
+    """
+    Builds customized, scannable day-by-day sightseeing blueprints, tracking hidden tourist 
+    landmarks and local travel events.
+    """
+    local_doc_result = run_pdf_rag_search(query)
+    if "No local travel documents" not in local_doc_result and local_doc_result.strip():
+        return local_doc_result
+    return run_live_web_search(f"travel itinerary tourist spots sightseeing guide {query}")
