@@ -4,38 +4,46 @@ import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 
-# --- SAFE ALIASED IMPORT GATEWAY ---
-# This block safely inspects tools.py and loads functions regardless of slight naming differences
+# --- DYNAMIC UNIVERSAL INSPECTION SCANNER GATEWAY ---
+# Automatically matches your tools.py functions by scanning for keywords
+search_flights = None
+search_hotels = None
+get_weather = None
+plan_itinerary = None
+
 try:
     import tools
+    import inspect
     
-    # 1. Resolve Flight Tool Name Variance
-    if hasattr(tools, "search_flights"): search_flights = tools.search_flights
-    elif hasattr(tools, "flight_search"): search_flights = tools.flight_search
-    elif hasattr(tools, "search_flight"): search_flights = tools.search_flight
-    else: raise ImportError("Flight search tool function matching failed inside tools.py")
+    # Get a list of all functions defined explicitly inside your tools.py
+    functions_list = inspect.getmembers(tools, inspect.isfunction)
+    
+    for name, func in functions_list:
+        name_lower = name.lower()
+        
+        # Dynamic keyword pattern matching flags
+        if "flight" in name_lower and not search_flights:
+            search_flights = func
+        elif "hotel" in name_lower and not search_hotels:
+            search_hotels = func
+        elif ("weather" in name_lower or "temp" in name_lower or "climate" in name_lower) and not get_weather:
+            get_weather = func
+        elif ("itinerary" in name_lower or "plan" in name_lower or "suggest" in name_lower) and not plan_itinerary:
+            plan_itinerary = func
 
-    # 2. Resolve Hotel Tool Name Variance
-    if hasattr(tools, "search_hotels"): search_hotels = tools.search_hotels
-    elif hasattr(tools, "hotel_search"): search_hotels = tools.hotel_search
-    elif hasattr(tools, "search_hotel"): search_hotels = tools.search_hotel
-    else: raise ImportError("Hotel search tool function matching failed inside tools.py")
-
-    # 3. Resolve Weather Tool Name Variance
-    if hasattr(tools, "get_weather"): get_weather = tools.get_weather
-    elif hasattr(tools, "weather_search"): get_weather = tools.weather_search
-    elif hasattr(tools, "fetch_weather"): get_weather = tools.fetch_weather
-    else: raise ImportError("Weather tool function matching failed inside tools.py")
-
-    # 4. Resolve Itinerary Tool Name Variance
-    if hasattr(tools, "plan_itinerary"): plan_itinerary = tools.plan_itinerary
-    elif hasattr(tools, "itinerary_planner"): plan_itinerary = tools.itinerary_planner
-    elif hasattr(tools, "create_itinerary"): plan_itinerary = tools.create_itinerary
-    else: raise ImportError("Itinerary tool function matching failed inside tools.py")
+    # Validation Guardrails: Ensure all 4 vectors found a matching functional code block
+    if not search_flights:
+        raise ImportError("Could not dynamically resolve your Flight tool function name inside tools.py")
+    if not search_hotels:
+        raise ImportError("Could not dynamically resolve your Hotel tool function name inside tools.py")
+    if not get_weather:
+        raise ImportError("Could not dynamically resolve your Weather tool function name inside tools.py")
+    if not plan_itinerary:
+        raise ImportError("Could not dynamically resolve your Itinerary tool function name inside tools.py")
 
 except ImportError as e:
     st.error(f"❌ Structural Alignment Mapping Failure: {str(e)}")
-    # Fallback placeholders to allow compilation to proceed safely during alignment checks
+    # Fallback blank definitions to allow interface compilation to clear during hot reloads
     def search_flights(*args, **kwargs): return "Flight tool offline"
     def search_hotels(*args, **kwargs): return "Hotel tool offline"
     def get_weather(*args, **kwargs): return "Weather tool offline"
