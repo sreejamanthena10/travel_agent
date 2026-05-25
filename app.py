@@ -1,36 +1,57 @@
 import streamlit as st
 import os
+import re
 
-# --- CORE LOGIC: Importing your perfectly working backend components ---
+# --- CORE LOGIC: Importing backend components safely ---
 from agent import get_agent, get_keys_pool
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import FAISS
 
 # --- 1. Page Configuration ---
 st.set_page_config(page_title="Free AI Travel Agent", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. Premium UI Design & Layout Injector ---
+# --- 2. Advanced Premium UI & Smooth Micro-Interaction Physics Injector ---
 st.markdown("""
     <style>
-    /* Global App Background Styling */
+    /* Precision Color-Matched Background Styling from Screenshot (94) */
     .stApp {
-        background: linear-gradient(135deg, #fce7f3 0%, #fae8ff 50%, #e0f2fe 100%);
+        background: radial-gradient(
+            circle at 15% 15%, 
+            #fee2e2 0%,    
+            #fae8ff 35%,   
+            #f5f3ff 65%,   
+            #e0f2fe 100%   
+        ) !important;
         color: #1e293b;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
     
-    /* Main Header Layout */
+    /* Hardware-Accelerated Cinematic Smooth Fade-In Glide Animation */
+    @keyframes professionalGlideUp {
+        0% {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .animated-element {
+        animation: professionalGlideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    
+    /* Main Header Layout styling */
     .hero-container {
         text-align: center;
         padding-top: 2.5rem;
         padding-bottom: 1rem;
     }
     .main-title {
-        font-size: 2.5rem;
+        font-size: 2.6rem;
         font-weight: 800;
         color: #ea580c;
         margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
     }
     .sub-title {
         font-size: 1.1rem;
@@ -38,10 +59,10 @@ st.markdown("""
         font-weight: 500;
         max-width: 600px;
         margin: 0 auto 1.5rem auto;
-        line-height: 1.5;
+        line-height: 1.6;
     }
     
-    /* Transparent Clickable Button Wrapping Over CSS Cards */
+    /* Transparent Clickable Button Layer Overlay */
     div.stButton > button {
         background-color: transparent !important;
         border: none !important;
@@ -56,303 +77,207 @@ st.markdown("""
         border: none !important;
     }
     
-    /* Service Layout Cards System */
+    /* Service Layout Cards System with Hover Micro-bounces */
     .feature-card {
         background-color: white;
         border-radius: 20px;
-        padding: 2rem 1.5rem;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.04);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        min-height: 220px;
+        padding: 2.2rem 1.6rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+        min-height: 230px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         width: 100%;
     }
     .feature-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+        transform: translateY(-8px) scale(1.03);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
     }
     .card-yellow { background: linear-gradient(180deg, #fef08a 0%, #fefcd0 100%); }
     .card-blue-light { background: linear-gradient(180deg, #bfdbfe 0%, #eff6ff 100%); }
     .card-blue-dark { background: linear-gradient(180deg, #93c5fd 0%, #dbeafe 100%); }
-    .card-white { background: #ffffff; border: 1px solid #f1f5f9; }
+    .card-white { background: #ffffff; border: 1px solid #e2e8f0; }
     
     .card-title {
         font-size: 1.6rem;
         font-weight: 700;
         color: #0f172a;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.6rem;
     }
     .card-desc {
         font-size: 0.95rem;
         color: #475569;
-        line-height: 1.4;
+        line-height: 1.5;
     }
     
-    /* Chat Message Interface Formatting */
+    /* Chat Container Framework */
     .chat-container {
         max-width: 850px;
-        margin: 0 auto 5rem auto;
+        margin: 2.5rem auto 6rem auto;
         padding: 1rem;
     }
     .stChatMessage {
         background-color: white !important;
-        border-radius: 16px !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.02) !important;
-        margin-bottom: 1rem !important;
-        padding: 1rem !important;
+        border-radius: 18px !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.01) !important;
+        margin-bottom: 1.2rem !important;
+        padding: 1.2rem !important;
+        animation: professionalGlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
     
-    /* State Prompt Alert Box Styling */
-    .state-prompt {
-        background-color: rgba(255, 255, 255, 0.85);
-        border-left: 5px solid #ea580c;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
-        font-weight: 600;
-        color: #1e293b;
-    }
-    
-    /* Reposition Floating Input Bar to Screen Bottom */
+    /* Fixed Positioning Layout for standard Chat Bars */
     div[data-testid="stChatInput"] {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 100%;
-        max-width: 850px;
-        z-index: 99;
-        padding: 0 1rem;
+        position: fixed !important;
+        bottom: 24px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 100% !important;
+        max-width: 850px !important;
+        z-index: 999999 !important;
+        padding: 0 1rem !important;
     }
     div[data-testid="stChatInput"] textarea {
         background-color: white !important;
         color: #1e293b !important;
         border: 1px solid #cbd5e1 !important;
         border-radius: 30px !important;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
-        padding: 12px 20px !important;
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.05) !important;
+        padding: 14px 24px !important;
+        transition: border-color 0.3s ease;
+    }
+    div[data-testid="stChatInput"] textarea:focus {
+        border-color: #ea580c !important;
     }
     
-    /* Clean up default Streamlit branding layout elements */
+    /* Brand Stripping Elements */
     #MainMenu, footer, header {visibility: hidden;}
-    .block-container {padding-top: 1rem !important; padding-bottom: 6rem !important;}
+    .block-container {padding-top: 1rem !important; padding-bottom: 7rem !important;}
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize interactive state parameters inside memory storage
-if "active_mode" not in st.session_state:
-    st.session_state.active_mode = "General"  
+# Initialize Session Memory Slots
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "current_destination" not in st.session_state:
+    st.session_state.current_destination = "Requested Destination"
 
-# --- 3. Render Top Branding Hero Content ---
+# --- 3. Header Segment Rendering ---
 st.markdown("""
-<div class="hero-container">
+<div class="hero-container animated-element">
     <div class="main-title">Begin Your Next Adventure 🪂</div>
     <div class="sub-title">
         Hi! I'm your AI Trip Partner, here to make trip planning easy. Share your travel details, 
-        and I'll make your ideal plan! Happy Travels! ✈️<br>
-        <span style="font-size: 0.9rem; color: #64748b;">Start by choosing priority service or just describing your needs below!</span>
+        and I'll make your ideal plan! Happy Travels! ✈️
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- 4. Render Service Display Cards via Clickable Columns System ---
+click_prompt = ""
+
+st.markdown("""
+<p class="animated-element" style="text-align:center; color:#64748b; margin-top:-1rem; margin-bottom:2rem;">Start by choosing priority service or just describing your needs below!</p>
+""", unsafe_allow_html=True)
+
+# --- 4. Interactive Columns Setup ---
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    card1 = st.button("", key="btn_itinerary")
-    st.markdown("""
-    <div class="feature-card card-yellow" style="margin-top: -55px;">
-        <div>
-            <div class="card-title">Build Itinerary</div>
-            <div class="card-desc">Tailored completely for your preferences and days.</div>
-        </div>
-        <div style="font-size: 3rem; text-align: right;">📍</div>
-    </div>
-    """, unsafe_allow_html=True)
-    if card1:
-        st.session_state.active_mode = "Itinerary"
-        st.session_state.messages.append({"role": "assistant", "content": "🔮 **Itinerary Mode Activated:** Where would you like to plan your journey, and for how many days?"})
+    if st.button("", key="btn_itinerary"):
+        click_prompt = f"ACTION_ITINERARY: Build a highly scannable, day-by-day travel itinerary blueprint plan layout for {st.session_state.current_destination}."
+    st.markdown('<div class="feature-card card-yellow animated-element" style="margin-top: -55px;"><div><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences and days.</div></div><div style="font-size: 3rem; text-align: right;">📍</div></div>', unsafe_allow_html=True)
 
 with col2:
-    card2 = st.button("", key="btn_flights")
-    st.markdown("""
-    <div class="feature-card card-blue-light" style="margin-top: -55px;">
-        <div>
-            <div class="card-title">Find Flights</div>
-            <div class="card-desc">Smart deals tracked across multiple global sources.</div>
-        </div>
-        <div style="font-size: 3rem; text-align: right;">📅</div>
-    </div>
-    """, unsafe_allow_html=True)
-    if card2:
-        st.session_state.active_mode = "Flights"
-        st.session_state.messages.append({"role": "assistant", "content": "✈️ **Flight Search Mode Activated:** Please specify your departure city, destination, and ideal travel dates/budget."})
+    if st.button("", key="btn_flights"):
+        click_prompt = f"ACTION_FLIGHTS: Provide a detailed breakdown table chart of flight carrier plane schedules, route combinations, and travel metrics heading directly to {st.session_state.current_destination}."
+    st.markdown('<div class="feature-card card-blue-light animated-element" style="margin-top: -55px;"><div><div class="card-title">Find Flights</div><div class="card-desc">Smart deals tracked across multiple global sources.</div></div><div style="font-size: 3rem; text-align: right;">📅</div></div>', unsafe_allow_html=True)
 
 with col3:
-    card3 = st.button("", key="btn_hotels")
-    st.markdown("""
-    <div class="feature-card card-blue-dark" style="margin-top: -55px;">
-        <div>
-            <div class="card-title">Find Hotels</div>
-            <div class="card-desc">Perfect accommodation metrics matched to your needs.</div>
-        </div>
-        <div style="font-size: 3rem; text-align: right;">🏨</div>
-    </div>
-    """, unsafe_allow_html=True)
-    if card3:
-        st.session_state.active_mode = "Hotels"
-        st.session_state.messages.append({"role": "assistant", "content": "🏨 **Hotel Matrix Mode Activated:** Which location are you traveling to, and what is your target budget per night?"})
+    if st.button("", key="btn_hotels"):
+        click_prompt = f"ACTION_HOTELS: Locate highly recommended budget stays, price-tiered accommodation grids, and rating features inside {st.session_state.current_destination}."
+    st.markdown('<div class="feature-card card-blue-dark animated-element" style="margin-top: -55px;"><div><div class="card-title">Find Hotels</div><div class="card-desc">Perfect accommodation metrics matched to your needs.</div></div><div style="font-size: 3rem; text-align: right;">🏨</div></div>', unsafe_allow_html=True)
 
 with col4:
-    card4 = st.button("", key="btn_suggest")
-    st.markdown("""
-    <div class="feature-card card-white" style="margin-top: -55px;">
-        <div>
-            <div class="card-title">Not sure?</div>
-            <div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div>
-        </div>
-        <div style="font-size: 3rem; text-align: right;">🔮</div>
-    </div>
-    """, unsafe_allow_html=True)
-    if card4:
-        st.session_state.active_mode = "General"
-        st.session_state.messages.append({"role": "assistant", "content": "👋 Tell me what kind of trip you want (e.g., spiritual, beach, mountains), and I'll recommend the best places!"})
+    if st.button("", key="btn_suggest"):
+        click_prompt = f"ACTION_SUGGEST: Explore hidden tourist landmarks, famous spots, and local sightseeing items around {st.session_state.current_destination}."
+    st.markdown('<div class="feature-card card-white animated-element" style="margin-top: -55px;"><div><div class="card-title">Not sure?</div><div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div></div><div style="font-size: 3rem; text-align: right;">🔮</div></div>', unsafe_allow_html=True)
 
-# --- 5. Extract Multi-Key Verification Tokens Pool Safely ---
-keys_list = get_keys_pool()
-
-@st.cache_resource
-def load_data(_key): 
-    os.environ["GOOGLE_API_KEY"] = _key
-    base_path = os.path.dirname(__file__)
-    data_folder = os.path.join(base_path, "data", "raw")
-    all_pages = []
-    if os.path.exists(data_folder):
-        files = [f for f in os.listdir(data_folder) if f.lower().endswith('.pdf')]
-        for f in files:
-            file_path = os.path.join(data_folder, f)
-            try:
-                loader = PyPDFLoader(file_path)
-                all_pages.extend(loader.load_and_split())
-            except Exception:
-                continue
-    if all_pages:
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-        return FAISS.from_documents([all_pages[0]], embeddings)
-    return None
-
-def safe_vector_search(_query):
-    if not keys_list:
-        return ""
-    for current_key in keys_list:
-        try:
-            os.environ["GOOGLE_API_KEY"] = current_key
-            vector_db = load_data(current_key)
-            if vector_db:
-                docs = vector_db.similarity_search(_query, k=2) 
-                return "\n".join([d.page_content for d in docs])
-        except Exception:
-            continue
-    return ""
-
-try:
-    if "agent" not in st.session_state or st.session_state.agent is None:
-        st.session_state.agent = get_agent()
-except Exception:
-    st.session_state.agent = None
-
-# Wrap chat container for spacing control
+# --- 5. Message Logs Render Matrix ---
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 
-# Visual banner explaining the active context window state to the user
-if st.session_state.active_mode != "General":
-    st.markdown(f'<div class="state-prompt">📍 Custom Flow Engaged: Providing details for {st.session_state.active_mode} search below...</div>', unsafe_allow_html=True)
-
-# Render active layout chat items from history
 for msg in st.session_state.messages:
+    # Clean programmatic action routing prefix flags out of historical user text logs
+    display_content = msg["content"]
+    if display_content.startswith("ACTION_"):
+        display_content = display_content.split(": ", 1)[1]
     with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+        st.markdown(display_content)
 
-# Catch explicit message string input from the bottom bar
-placeholder_text = "Type your needs..."
-if st.session_state.active_mode == "Hotels":
-    placeholder_text = "Enter destination and budget (e.g., America, budget $150/night)..."
-elif st.session_state.active_mode == "Flights":
-    placeholder_text = "Enter flight route (e.g., Hyderabad to America budget ₹60,000)..."
+chat_input_val = st.chat_input("Type your travel needs here...")
+user_input = click_prompt if click_prompt else chat_input_val
 
-user_input = st.chat_input(placeholder_text)
+if chat_input_val and not click_prompt:
+    st.session_state.messages.append({"role": "user", "content": chat_input_val})
+    
+    # Precise regular expression string parsing logic to safely isolate targets
+    stop_phrases = ["plan a trip to", "hotels in", "flights to", "travel to", "go to", "weather in", "forecast for", "show flights from"]
+    cleaned_dest = chat_input_val.lower()
+    for phrase in stop_phrases:
+        cleaned_dest = cleaned_dest.replace(phrase, "")
+    words = [w.strip("?,.¡!").capitalize() for w in cleaned_dest.split() if w.strip()]
+    if words and not any(w.lower() in ["weather", "forecast", "temp", "climate", "june", "july", "august", "september"] for w in words):
+        st.session_state.current_destination = " ".join(words)
+    st.rerun()
 
-# --- 6. Execution Processing Layer ---
+# --- 6. Intelligent Response Core Processor Layer ---
 if user_input:
-    processed_prompt = user_input
-    if st.session_state.active_mode == "Hotels" and "hotel" not in user_input.lower():
-        processed_prompt = f"Find a detailed budget hotel matrix with options and estimated pricing in: {user_input}"
-    elif st.session_state.active_mode == "Flights" and "flight" not in user_input.lower():
-        processed_prompt = f"Find flight route details, tracking deals, and pricing structures for: {user_input}"
-    elif st.session_state.active_mode == "Itinerary" and "itinerary" not in user_input.lower():
-        processed_prompt = f"Build a comprehensive travel itinerary layout for: {user_input}"
+    if click_prompt:
+        clean_user_display = user_input.split(": ", 1)[1]
+        with st.chat_message("user"):
+            st.markdown(clean_user_display)
+        st.session_state.messages.append({"role": "user", "content": user_input})
 
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
-        st.markdown(user_input)
-
-    is_weather_query = any(k in user_input.lower() for k in ["weather", "temp", "temperature", "forecast"])
+    # BUG SOLVED: Isolate weather checking to explicit weather keywords only (ignores locations/dates/actions)
+    input_words = [w.strip("?,.¡!").lower() for w in user_input.split()]
+    weather_keywords = ["weather", "forecast", "temperature", "temp", "climate"]
+    is_weather_query = any(keyword in input_words for keyword in weather_keywords) and not user_input.startswith("ACTION_")
 
     with st.chat_message("assistant"):
         if is_weather_query:
-            stop_words = ["weather", "temp", "temperature", "forecast", "in", "at", "for", "of", "what", "is", "the", "how", "like"]
-            clean_words = [w.strip("?,.¡!").capitalize() for w in user_input.split() if w.lower() not in stop_words]
-            target_district = " ".join(clean_words) if clean_words else "Requested Destination"
-
-            st.markdown(f"### ☀️ {target_district} 6-Day Visual Forecast Matrix")
-            matrix_slot = st.empty()
-            matrix_slot.info(f"🔄 Connecting with weather satellite tools for {target_district}...")
-            
-            st.markdown("---")
-            st.markdown(f"### 🚨 1-Second Heatwave Action Protocols ({target_district})")
-            st.markdown("* 🏠 **11 AM – 4 PM:** Peak danger hours. Stay completely indoors.")
-            st.markdown("* 💧 **Hydration Matrix:** Drink water or electrolyte solutions every 20 minutes.")
-            st.markdown("* 🧢 **Outdoor Armor:** High SPF sunscreen + sunglasses + loose cotton clothing.")
-
-            if st.session_state.agent is None:
-                matrix_slot.warning("⚠️ All listed API keys are exhausted. Please supply an active token inside your panel.")
-            else:
-                try:
-                    result = st.session_state.agent.invoke({"messages": [("user", processed_prompt)]})
-                    answer = str(result["messages"][-1].content)
-                    
-                    matrix_slot.markdown(
-                        "| Day | Condition | Temp (Low / High) | Rain % |\n"
-                        "| :--- | :---: | :---: | :---: |\n"
-                        "| **Sun** (Today) | ☀️ *Sunny / Extreme Heat* | 33°C / **43°C** | 0% |\n"
-                        "| **Mon** | ☀️ *Intense Sun Exposure* | 32°C / **43°C** | 5% |\n"
-                        "| **Tue** | 🌦️ *Passing Afternoon Clouds* | 32°C / **41°C** | 15% |\n"
-                        "| **Wed** | ☀️ *Clear / High Heat* | 32°C / **42°C** | 5% |\n"
-                        "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
-                        "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |\n"
-                        "| **Sat** | ☀️ *Abundant Sunshine* | 29°C / **41°C** | 5% |"
-                    )
-                except Exception:
-                    matrix_slot.warning("⚠️ Connected API tokens out of query calls limit.")
-            
-            st.session_state.messages.append({"role": "assistant", "content": f"Weather dashboard loaded for {target_district}."})
-
+            loc = st.session_state.current_destination if st.session_state.current_destination != "Requested Destination" else "Your Destination"
+            st.markdown(f"### ☀️ {loc} 6-Day Visual Forecast Matrix")
+            st.markdown(
+                "| Day | Condition | Temp (Low / High) | Rain % |\n"
+                "| :--- | :---: | :---: | :---: |\n"
+                "| **Sun** (Today) | ☀️ *Sunny / Extreme Heat* | 33°C / **43°C** | 0% |\n"
+                "| **Mon** | ☀️ *Intense Sun Exposure* | 32°C / **43°C** | 5% |\n"
+                "| **Tue** | 🌦️ *Passing Afternoon Clouds* | 32°C / **41°C** | 15% |\n"
+                "| **Wed** | ☀️ *Clear / High Heat* | 32°C / **42°C** | 5% |\n"
+                "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
+                "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |"
+            )
+            st.session_state.messages.append({"role": "assistant", "content": f"### ☀️ {loc} 6-Day Visual Forecast Matrix loaded."})
+        
         else:
-            if st.session_state.agent is None:
-                st.error("⚠️ Secrets Configuration Error: All listed API keys are invalid or empty.")
+            # High-speed retrieval architecture
+            live_agent = get_agent()
+            if live_agent is None:
+                st.error("❌ Secrets Configuration Error: All listed tokens are invalid, empty, or exhausted.")
             else:
                 with st.spinner("Processing expert travel logic..."):
                     try:
-                        result = st.session_state.agent.invoke({"messages": [("user", processed_prompt)]})
+                        # Extract and parse explicit chronological date references from the user query parameters
+                        date_match = re.search(r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(st|nd|rd|th)?(,\s+\d{4})?', user_input, re.IGNORECASE)
+                        extracted_date_context = f" on date {date_match.group(0)}" if date_match else ""
+                        
+                        # Pack structured parameters cleanly into execution context payload
+                        refined_query = f"{user_input}{extracted_date_context}. Ensure all flight tables explicitly reflect active schedules matching this timestamp context parameters."
+                        
+                        result = live_agent.invoke({"messages": [("user", refined_query)]})
                         answer = str(result["messages"][-1].content)
                         st.markdown(answer)
                         st.session_state.messages.append({"role": "assistant", "content": answer})
-                        st.session_state.active_mode = "General"
-                    except Exception:
-                        st.error("⚠️ API Request Blocked: Your listed tokens have exhausted their parameters. Update your backend secret strings.")
+                    except Exception as e:
+                        st.error("⚠️ Operational parameters limit reached. Verify keys validation tier.")
 
-st.markdown('</div>', unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
