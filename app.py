@@ -69,6 +69,13 @@ STYLE_SHEET = f"""
     .card-desc {{ font-size: 0.95rem; color: {SUB_TEXT_COLOR}; line-height: 1.5; }}
     .chat-container {{ max-width: 850px; margin: 2.5rem auto 6rem auto; padding: 1rem; }}
     .stChatMessage {{ background-color: {CARD_BG} !important; border: 1px solid {CARD_BORDER} !important; color: {TEXT_COLOR} !important; border-radius: 18px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.01) !important; margin-bottom: 1.2rem !important; padding: 1.2rem !important; animation: professionalGlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }}
+    
+    /* FIX: Force Streamlit loading spinner text labels to be fully visible in both light and dark mode rules */
+    .stSpinner p {{
+        color: {TEXT_COLOR} !important;
+        font-weight: 500 !important;
+    }}
+    
     div[data-testid='stChatInput'] {{ position: fixed !important; bottom: 24px !important; left: 50% !important; transform: translateX(-50%) !important; width: 100% !important; max-width: 850px !important; z-index: 999999 !important; padding: 0 1rem !important; }}
     div[data-testid='stChatInput'] textarea {{ background-color: {CARD_BG} !important; color: {TEXT_COLOR} !important; border: 1px solid {CARD_BORDER} !important; border-radius: 30px !important; box-shadow: 0 12px 35px rgba(0, 0, 0, 0.05) !important; padding: 14px 24px !important; transition: border-color 0.3s ease; }}
     div[data-testid='stChatInput'] textarea:focus {{ border-color: #ea580c !important; }}
@@ -153,7 +160,7 @@ def execute_dynamic_budget_math(prompt_text):
     except Exception:
         return "⚠️ Error compiling dynamic mathematical budget allocations. Please verify numerical format strings inside your prompt parameters."
 
-# BUG SOLVED: Initialize click_prompt globally at the root layout scale so it is never undefined
+# Initialize click_prompt globally at the root layout scale so it is never undefined
 click_prompt = ""
 
 # --- 5. Interactive Columns Setup ---
@@ -214,106 +221,108 @@ placeholder_container = st.empty()
 
 if user_input:
     with placeholder_container.container():
+        # FIX: Added clear conditional logic boundaries to ensure dynamic responses trigger cleanly without hanging
         if "evacuation" in user_input.lower() and "liquidity" in user_input.lower() and "deficit" in user_input.lower():
             math_answer = execute_dynamic_budget_math(user_input)
             st.session_state.messages.append({"role": "assistant", "content": math_answer})
             st.rerun()
             
-        input_words = [w.strip("?,.¡!").lower() for w in user_input.split()]
-        weather_keywords = ["weather", "forecast", "climate"]
-        is_weather_query = any(keyword in input_words for keyword in weather_keywords) and "report" not in input_words and "operations" not in input_words and not user_input.startswith("ACTION_")
-
-        if is_weather_query:
-            loc = st.session_state.current_destination if st.session_state.current_destination else "Your Destination"
-            weather_output = (
-                f"### ☀️ {loc} 6-Day Visual Forecast Matrix\n\n"
-                "| Day | Condition | Temp (Low / High) | Rain % |\n"
-                "| :--- | :---: | :---: | :---: |\n"
-                "| **Sun** (Today) | ☀️ *Sunny / Extreme Heat* | 33°C / **43°C** | 0% |\n"
-                "| **Mon** | ☀️ *Intense Sun Exposure* | 32°C / **43°C** | 5% |\n"
-                "| **Tue** | 🌦️ *Passing Afternoon Clouds* | 32°C / **41°C** | 15% |\n"
-                "| **Wed** | ☀️ *Clear / High Heat* | 32°C / **42°C** | 5% |\n"
-                "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
-                "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |"
-            )
-            st.session_state.messages.append({"role": "assistant", "content": weather_output})
-            st.rerun()
         else:
-            live_agent = get_agent()
-            if live_agent is None:
-                st.error("❌ Secrets Configuration Error: All listed tokens are invalid, empty, or exhausted.")
-            else:
-                with st.spinner("Processing expert travel logic..."):
-                    try:
-                        date_match = re.search(r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(st|nd|rd|th)?(,\s+\d{4})?', user_input, re.IGNORECASE)
-                        extracted_date_context = f" on date {date_match.group(0)}" if date_match else ""
-                        refined_query = f"{user_input}{extracted_date_context}. Ensure all flight tables explicitly reflect active schedules matching this timestamp context parameters."
-                        
-                        result = live_agent.invoke({"messages": [("user", refined_query)]})
-                        agent_messages = result.get("messages", [])
-                        answer = ""
-                        
-                        for msg in reversed(agent_messages):
-                            msg_type = getattr(msg, "type", "").lower()
-                            class_name = msg.__class__.__name__
-                            if "ai" in msg_type or "ai" in class_name.lower():
-                                if hasattr(msg, "content") and str(msg.content).strip():
-                                    answer = str(msg.content)
-                                    break
-                        if not answer and agent_messages:
-                            last_msg = agent_messages[-1]
-                            if hasattr(last_msg, "content"): answer = str(last_msg.content)
-                            elif isinstance(last_msg, dict) and "content" in last_msg: answer = str(last_msg["content"])
-                            else: answer = str(last_msg)
+            input_words = [w.strip("?,.¡!").lower() for w in user_input.split()]
+            weather_keywords = ["weather", "forecast", "climate"]
+            is_weather_query = any(keyword in input_words for keyword in weather_keywords) and "report" not in input_words and "operations" not in input_words and not user_input.startswith("ACTION_")
 
-                        if answer.strip():
-                            st.session_state.messages.append({"role": "assistant", "content": answer})
-                        else:
-                            st.session_state.messages.append({"role": "assistant", "content": "⚠️ The agent processed your query but returned an empty text layer."})
-                        st.rerun()
+            if is_weather_query:
+                loc = st.session_state.current_destination if st.session_state.current_destination else "Your Destination"
+                weather_output = (
+                    f"### ☀️ {loc} 6-Day Visual Forecast Matrix\n\n"
+                    "| Day | Condition | Temp (Low / High) | Rain % |\n"
+                    "| :--- | :---: | :---: | :---: |\n"
+                    "| **Sun** (Today) | ☀️ *Sunny / Extreme Heat* | 33°C / **43°C** | 0% |\n"
+                    "| **Mon** | ☀️ *Intense Sun Exposure* | 32°C / **43°C** | 5% |\n"
+                    "| **Tue** | 🌦️ *Passing Afternoon Clouds* | 32°C / **41°C** | 15% |\n"
+                    "| **Wed** | ☀️ *Clear / High Heat* | 32°C / **42°C** | 5% |\n"
+                    "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
+                    "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |"
+                )
+                st.session_state.messages.append({"role": "assistant", "content": weather_output})
+                st.rerun()
+            else:
+                live_agent = get_agent()
+                if live_agent is None:
+                    st.error("❌ Secrets Configuration Error: All listed tokens are invalid, empty, or exhausted.")
+                else:
+                    with st.spinner("Processing expert travel logic..."):
+                        try:
+                            date_match = re.search(r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(st|nd|rd|th)?(,\s+\d{4})?', user_input, re.IGNORECASE)
+                            extracted_date_context = f" on date {date_match.group(0)}" if date_match else ""
+                            refined_query = f"{user_input}{extracted_date_context}. Ensure all flight tables explicitly reflect active schedules matching this timestamp context parameters."
                             
-                    except Exception as e:
-                        error_str = str(e)
-                        if "RESOURCE_EXHAUSTED" in error_str or "429" in error_str or "quota" in error_str.lower():
-                            loc = st.session_state.current_destination if st.session_state.current_destination else "Your Destination"
+                            result = live_agent.invoke({"messages": [("user", refined_query)]})
+                            agent_messages = result.get("messages", [])
+                            answer = ""
                             
-                            if "cancel" in user_input.lower() or "reliability" in user_input.lower() or "dependency" in user_input.lower():
-                                fallback_ans = (
-                                    f"### 📅 Airline Operations Reliability Report: Mapped for {loc}\n"
-                                    "**Analysis Focus Window:** Peak Seasonal Target Performance Parameters\n\n"
-                                    "| Risk Factor | Operational Impact Metric | Reliability Score | Mitigation Status |\n"
-                                    "| :--- | :--- | :---: | :--- |\n"
-                                    "| **Severe Heat Strains** | Air density shifts limit maximum operational takeoff weight limits | 🟡 78% | Regulated schedule windows applied |\n"
-                                    "| **Convective Weather Influx** | Local turbulence indices cause minor taxi path delays | 🟢 85% | Dynamic radar tracking enabled |\n"
-                                    "| **Flight Cancellation Rate** | Statistical seasonal adjustment variance bounds | 🔴 Monitored | Alternative equipment routing active |"
-                                )
-                            elif "flight" in user_input.lower() or "ACTION_FLIGHTS" in user_input:
-                                fallback_ans = (
-                                    f"### 📅 Plane Schedules & Routes: Heading to {loc}\n"
-                                    "**Selected Travel Window:** Active Calendar Target (2026)\n\n"
-                                    "| Airline Carrier | Flight No. | Departure -> Arrival | Est. Return Ticket Rate | Status |\n"
-                                    "| :--- | :--- | :--- | :--- | :--- |\n"
-                                    "| Premium Core Carrier | CC-523 | 06:15 -> 11:45 | ₹32,500 / $390 | 🟢 Available |\n"
-                                    "| Regional Eco Jet | EJ-1007 | 14:30 -> 19:15 | ₹24,000 / $288 | 🟢 Available |\n"
-                                    "| National Flag Air | NA-342 | 21:00 -> 02:20 (+1) | ₹29,800 / $358 | 🟢 Available |"
-                                )
-                            elif "hotel" in user_input.lower() or "ACTION_HOTELS" in user_input:
-                                fallback_ans = (
-                                    f"### 🏨 Recommended Accommodations Pricing Matrix: {loc}\n\n"
-                                    "| Tier | Accommodation Venue Name | Verified Rating | Est. Nightly Rate |\n"
-                                    "| :--- | :--- | :---: | :--- |\n"
-                                    "| 🎒 Budget Stays | Backpackers Cozy Comfort Hub | ⭐ 4.2 | ₹1,200 / $14 |\n"
-                                    "| 🏨 Family Comfort | Metro Center Premium Inn | ⭐ 4.5 | ₹3,500 / $42 |\n"
-                                    "| 💎 Luxury Resorts | Grand Landmark Executive Suites | ⭐ 4.8 | ₹9,500 / $114 |"
-                                )
+                            for msg in reversed(agent_messages):
+                                msg_type = getattr(msg, "type", "").lower()
+                                class_name = msg.__class__.__name__
+                                if "ai" in msg_type or "ai" in class_name.lower():
+                                    if hasattr(msg, "content") and str(msg.content).strip():
+                                        answer = str(msg.content)
+                                        break
+                            if not answer and agent_messages:
+                                last_msg = agent_messages[-1]
+                                if hasattr(last_msg, "content"): answer = str(last_msg.content)
+                                elif isinstance(last_msg, dict) and "content" in last_msg: answer = str(last_msg["content"])
+                                else: answer = str(last_msg)
+
+                            if answer.strip():
+                                st.session_state.messages.append({"role": "assistant", "content": answer})
                             else:
-                                fallback_ans = (
-                                    f"### 📍 AI Travel Concierge Assistant Blueprint\n\nYour request for *\"{user_input}\"* was processed via backup local intelligence rails.\n\n"
-                                    "* **Next Steps:** Let me know if you would like to render a date-matched **Flight pricing matrix** chart or a detailed **Hotel accommodation table** matching your budget profile preferences!"
-                                )
-                            st.session_state.messages.append({"role": "assistant", "content": fallback_ans})
+                                st.session_state.messages.append({"role": "assistant", "content": "⚠️ The agent processed your query but returned an empty text layer."})
                             st.rerun()
-                        else:
-                            st.error(f"❌ Backend Execution Failure: {error_str}")
+                                
+                        except Exception as e:
+                            error_str = str(e)
+                            if "RESOURCE_EXHAUSTED" in error_str or "429" in error_str or "quota" in error_str.lower():
+                                loc = st.session_state.current_destination if st.session_state.current_destination else "Your Destination"
+                                
+                                if "cancel" in user_input.lower() or "reliability" in user_input.lower() or "dependency" in user_input.lower():
+                                    fallback_ans = (
+                                        f"### 📅 Airline Operations Reliability Report: Mapped for {loc}\n"
+                                        "**Analysis Focus Window:** Peak Seasonal Target Performance Parameters\n\n"
+                                        "| Risk Factor | Operational Impact Metric | Reliability Score | Mitigation Status |\n"
+                                        "| :--- | :--- | :---: | :--- |\n"
+                                        "| **Severe Heat Strains** | Air density shifts limit maximum operational takeoff weight limits | 🟡 78% | Regulated schedule windows applied |\n"
+                                        "| **Convective Weather Influx** | Local turbulence indices cause minor taxi path delays | 🟢 85% | Dynamic radar tracking enabled |\n"
+                                        "| **Flight Cancellation Rate** | Statistical seasonal adjustment variance bounds | 🔴 Monitored | Alternative equipment routing active |"
+                                )
+                                elif "flight" in user_input.lower() or "ACTION_FLIGHTS" in user_input:
+                                    fallback_ans = (
+                                        f"### 📅 Plane Schedules & Routes: Heading to {loc}\n"
+                                        "**Selected Travel Window:** Active Calendar Target (2026)\n\n"
+                                        "| Airline Carrier | Flight No. | Departure -> Arrival | Est. Return Ticket Rate | Status |\n"
+                                        "| :--- | :--- | :--- | :--- | :--- |\n"
+                                        "| Premium Core Carrier | CC-523 | 06:15 -> 11:45 | ₹32,500 / $390 | 🟢 Available |\n"
+                                        "| Regional Eco Jet | EJ-1007 | 14:30 -> 19:15 | ₹24,000 / $288 | 🟢 Available |\n"
+                                        "| National Flag Air | NA-342 | 21:00 -> 02:20 (+1) | ₹29,800 / $358 | 🟢 Available |"
+                                    )
+                                elif "hotel" in user_input.lower() or "ACTION_HOTELS" in user_input:
+                                    fallback_ans = (
+                                        f"### 🏨 Recommended Accommodations Pricing Matrix: {loc}\n\n"
+                                        "| Tier | Accommodation Venue Name | Verified Rating | Est. Nightly Rate |\n"
+                                        "| :--- | :--- | :---: | :--- |\n"
+                                        "| 🎒 Budget Stays | Backpackers Cozy Comfort Hub | ⭐ 4.2 | ₹1,200 / $14 |\n"
+                                        "| 🏨 Family Comfort | Metro Center Premium Inn | ⭐ 4.5 | ₹3,500 / $42 |\n"
+                                        "| 💎 Luxury Resorts | Grand Landmark Executive Suites | ⭐ 4.8 | ₹9,500 / $114 |"
+                                    )
+                                else:
+                                    fallback_ans = (
+                                        f"### 📍 AI Travel Concierge Assistant Blueprint\n\nYour request for *\"{user_input}\"* was processed via backup local intelligence rails.\n\n"
+                                        "* **Next Steps:** Let me know if you would like to render a date-matched **Flight pricing matrix** chart or a detailed **Hotel accommodation table** matching your budget profile preferences!"
+                                    )
+                                st.session_state.messages.append({"role": "assistant", "content": fallback_ans})
+                                st.rerun()
+                            else:
+                                st.error(f"❌ Backend Execution Failure: {error_str}")
 
 st.markdown("</div>", unsafe_allow_html=True)
