@@ -12,45 +12,133 @@ st.set_page_config(page_title="Free AI Travel Agent", layout="wide", initial_sid
 # --- 2. Advanced Premium UI & Smooth Micro-Interaction Physics Injector ---
 st.markdown("""
     <style>
+    /* Precision Color-Matched Background Styling from Your Mockup */
     .stApp {
-        background: radial-gradient(circle at 15% 15%, #fee2e2 0%, #fae8ff 35%, #f5f3ff 65%, #e0f2fe 100%) !important;
+        background: radial-gradient(
+            circle at 15% 15%, 
+            #fee2e2 0%,    
+            #fae8ff 35%,   
+            #f5f3ff 65%,   
+            #e0f2fe 100%   
+        ) !important;
         color: #1e293b;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
+    
+    /* Hardware-Accelerated Cinematic Smooth Fade-In Glide Animation */
     @keyframes professionalGlideUp {
         0% { opacity: 0; transform: translateY(20px); }
         100% { opacity: 1; transform: translateY(0); }
     }
+    
     .animated-element {
         animation: professionalGlideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
-    .hero-container { text-align: center; padding-top: 2.5rem; padding-bottom: 1rem; }
-    .main-title { font-size: 2.6rem; font-weight: 800; color: #ea580c; margin-bottom: 0.5rem; letter-spacing: -0.5px; }
-    .sub-title { font-size: 1.1rem; color: #475569; font-weight: 500; max-width: 600px; margin: 0 auto 1.5rem auto; line-height: 1.6; }
-    div.stButton > button { background-color: transparent !important; border: none !important; padding: 0 !important; width: 100% !important; height: auto !important; text-align: left !important; box-shadow: none !important; }
-    div.stButton > button:hover { background-color: transparent !important; border: none !important; }
-    .feature-card {
-        background-color: white; border-radius: 20px; padding: 2.2rem 1.6rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
-        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease; min-height: 230px; display: flex; flex-direction: column; justify-content: space-between; width: 100%;
+    
+    /* Main Header Layout styling */
+    .hero-container {
+        text-align: center;
+        padding-top: 2.5rem;
+        padding-bottom: 1rem;
     }
-    .feature-card:hover { transform: translateY(-8px) scale(1.03); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06); }
+    .main-title {
+        font-size: 2.6rem;
+        font-weight: 800;
+        color: #ea580c;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+    .sub-title {
+        font-size: 1.1rem;
+        color: #475569;
+        font-weight: 500;
+        max-width: 600px;
+        margin: 0 auto 1.5rem auto;
+        line-height: 1.6;
+    }
+    
+    /* Transparent Clickable Button Layer Overlay */
+    div.stButton > button {
+        background-color: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        text-align: left !important;
+        box-shadow: none !important;
+    }
+    div.stButton > button:hover {
+        background-color: transparent !important;
+    }
+    
+    /* Service Layout Cards System with Hover Micro-bounces */
+    .feature-card {
+        background-color: white;
+        border-radius: 20px;
+        padding: 2.2rem 1.6rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+        min-height: 230px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 100%;
+    }
+    .feature-card:hover {
+        transform: translateY(-8px) scale(1.03);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+    }
     .card-yellow { background: linear-gradient(180deg, #fef08a 0%, #fefcd0 100%); }
     .card-blue-light { background: linear-gradient(180deg, #bfdbfe 0%, #eff6ff 100%); }
     .card-blue-dark { background: linear-gradient(180deg, #93c5fd 0%, #dbeafe 100%); }
     .card-white { background: #ffffff; border: 1px solid #e2e8f0; }
+    
     .card-title { font-size: 1.6rem; font-weight: 700; color: #0f172a; margin-bottom: 0.6rem; }
     .card-desc { font-size: 0.95rem; color: #475569; line-height: 1.5; }
-    .chat-container { max-width: 850px; margin: 2.5rem auto 6rem auto; padding: 1rem; }
-    .stChatMessage { background-color: white !important; border-radius: 18px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.01) !important; margin-bottom: 1.2rem !important; padding: 1.2rem !important; animation: professionalGlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    div[data-testid="stChatInput"] { position: fixed !important; bottom: 24px !important; left: 50% !important; transform: translateX(-50%) !important; width: 100% !important; max-width: 850px !important; z-index: 999999 !important; padding: 0 1rem !important; }
-    div[data-testid="stChatInput"] textarea { background-color: white !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; border-radius: 30px !important; box-shadow: 0 12px 35px rgba(0, 0, 0, 0.05) !important; padding: 14px 24px !important; transition: border-color 0.3s ease; }
+    
+    /* Chat Container Framework */
+    .chat-container {
+        max-width: 850px;
+        margin: 2.5rem auto 6rem auto;
+        padding: 1rem;
+    }
+    .stChatMessage {
+        background-color: white !important;
+        border-radius: 18px !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.01) !important;
+        margin-bottom: 1.2rem !important;
+        padding: 1.2rem !important;
+        animation: professionalGlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    
+    /* Fixed Positioning Layout for standard Chat Bars */
+    div[data-testid="stChatInput"] {
+        position: fixed !important;
+        bottom: 24px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 100% !important;
+        max-width: 850px !important;
+        z-index: 999999 !important;
+        padding: 0 1rem !important;
+    }
+    div[data-testid="stChatInput"] textarea {
+        background-color: white !important;
+        color: #1e293b !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 30px !important;
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.05) !important;
+        padding: 14px 24px !important;
+        transition: border-color 0.3s ease;
+    }
     div[data-testid="stChatInput"] textarea:focus { border-color: #ea580c !important; }
+    
     #MainMenu, footer, header {visibility: hidden;}
     .block-container {padding-top: 1rem !important; padding-bottom: 7rem !important;}
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize Session States
+# Initialize Session Memory Slots
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "current_destination" not in st.session_state:
@@ -99,6 +187,7 @@ with col4:
 # --- 5. Message Logs Render Matrix ---
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 
+# Render history instantly
 for msg in st.session_state.messages:
     display_content = msg["content"]
     if display_content.startswith("ACTION_"):
@@ -107,28 +196,37 @@ for msg in st.session_state.messages:
         st.markdown(display_content)
 
 chat_input_val = st.chat_input("Type your travel needs here...")
-user_input = click_prompt if click_prompt else chat_input_val
 
-if chat_input_val and not click_prompt:
+# FIXED PROCESSING FLOW: Capture user input cleanly without immediate reruns killing execution state
+user_input = ""
+if click_prompt:
+    user_input = click_prompt
+    st.session_state.messages.append({"role": "user", "content": click_prompt})
+elif chat_input_val:
+    user_input = chat_input_val
     st.session_state.messages.append({"role": "user", "content": chat_input_val})
     
+    # Destination parsing logic safely handled inline
     stop_phrases = ["plan a trip to", "hotels in", "flights to", "travel to", "go to", "weather in", "forecast for", "show flights from"]
     cleaned_dest = chat_input_val.lower()
     for phrase in stop_phrases:
         cleaned_dest = cleaned_dest.replace(phrase, "")
     words = [w.strip("?,.¡!").capitalize() for w in cleaned_dest.split() if w.strip()]
-    if words and not any(w.lower() in ["weather", "forecast", "temp", "climate", "june", "july", "august", "september"] for w in words):
+    if words and not any(w.lower() in ["weather", "forecast", "temp", "temperature", "climate", "june", "july"] for w in words):
         st.session_state.current_destination = " ".join(words)
-    st.rerun()
 
 # --- 6. Intelligent Response Core Processor Layer ---
 if user_input:
+    # Render user prompt immediately on screen
     if click_prompt:
         clean_user_display = user_input.split(": ", 1)[1]
         with st.chat_message("user"):
             st.markdown(clean_user_display)
-        st.session_state.messages.append({"role": "user", "content": user_input})
+    else:
+        with st.chat_message("user"):
+            st.markdown(user_input)
 
+    # Keywords validation boundaries
     input_words = [w.strip("?,.¡!").lower() for w in user_input.split()]
     weather_keywords = ["weather", "forecast", "temperature", "temp", "climate"]
     is_weather_query = any(keyword in input_words for keyword in weather_keywords) and not user_input.startswith("ACTION_")
@@ -137,7 +235,7 @@ if user_input:
         if is_weather_query:
             loc = st.session_state.current_destination if st.session_state.current_destination != "Requested Destination" else "Your Destination"
             st.markdown(f"### ☀️ {loc} 6-Day Visual Forecast Matrix")
-            st.markdown(
+            weather_output = (
                 "| Day | Condition | Temp (Low / High) | Rain % |\n"
                 "| :--- | :---: | :---: | :---: |\n"
                 "| **Sun** (Today) | ☀️ *Sunny / Extreme Heat* | 33°C / **43°C** | 0% |\n"
@@ -147,7 +245,8 @@ if user_input:
                 "| **Thu** | ☀️ *Intense Heatwave Peaks* | 32°C / **43°C** | 15% |\n"
                 "| **Fri** | 🌤️ *Partly Cloudy / Humid* | 31°C / **41°C** | 15% |"
             )
-            st.session_state.messages.append({"role": "assistant", "content": f"### ☀️ {loc} 6-Day Visual Forecast Matrix loaded."})
+            st.markdown(weather_output)
+            st.session_state.messages.append({"role": "assistant", "content": f"### ☀️ {loc} 6-Day Visual Forecast Matrix\n" + weather_output})
         
         else:
             live_agent = get_agent()
@@ -162,6 +261,7 @@ if user_input:
                         
                         result = live_agent.invoke({"messages": [("user", refined_query)]})
                         
+                        # --- UNIVERSAL MESSAGE EXTRACTOR LAYER ---
                         agent_messages = result.get("messages", [])
                         answer = ""
                         
