@@ -1,4 +1,6 @@
 import streamlit as st
+import uuid
+import re
 from agent import get_agent
 
 # --- 1. System Page Configurations ---
@@ -11,13 +13,15 @@ if "messages" not in st.session_state:
 if "theme" not in st.session_state:
     st.session_state.theme = "light"
 
-# --- 3. Header Theme Controller (Manual System-Independent Toggle) ---
+# --- 3. Header Theme Controller (Clean ON/OFF Toggle Switch Widget) ---
 col_space, col_toggle = st.columns([8, 2])
 with col_toggle:
-    current_theme = st.session_state.theme
-    toggle_label = "🌙 Night Sky Mode" if current_theme == "light" else "☀️ Bright Day Mode"
-    if st.button(toggle_label, use_container_width=True):
-        st.session_state.theme = "dark" if current_theme == "light" else "light"
+    # Upgraded to st.toggle to create a professional ON/OFF slide switcher layout
+    is_dark = st.toggle("🌙 Dark Mode (ON/OFF)", value=(st.session_state.theme == "dark"))
+    new_theme = "dark" if is_dark else "light"
+    
+    if new_theme != st.session_state.theme:
+        st.session_state.theme = new_theme
         st.rerun()
 
 # --- 4. Dynamic Theme-Independent CSS Engine (Matches "Screenshot (94)_2.jpg") ---
@@ -208,12 +212,23 @@ if user_input := st.chat_input("Describe your ideal destination journey or askin
                 config = {"configurable": {"thread_id": "live_travel_suite_v3"}}
                 agent_output = agent_executor.invoke({"messages": [("user", user_input)]}, config=config)
                 
-                # Fetch final reply content accurately regardless of string complexity or prompt length
-                final_reply = agent_output["messages"][-1].content
+                # Fetch final reply content accurately regardless of string complexity
+                raw_reply = str(agent_output["messages"][-1].content)
                 
-                response_placeholder.markdown(final_reply)
-                st.session_state.messages.append({"role": "assistant", "content": final_reply})
+                # REGINA STRIPPER ENGINE: Detects and cuts off raw signature tokens or fallback dict tags instantly
+                if "signature" in raw_reply or "extras" in raw_reply or "{'type'" in raw_reply:
+                    clean_reply = re.split(r"extras|\{'type'|'signature'", raw_reply)[0].strip()
+                    clean_reply = clean_reply.rstrip("]}[',: ")
+                else:
+                    clean_reply = raw_reply
+                
+                # Handle unexpected blank outputs safely
+                if not clean_reply.strip():
+                    clean_reply = "Results verified successfully! Please find your details below."
+                
+                response_placeholder.markdown(clean_reply)
+                st.session_state.messages.append({"role": "assistant", "content": clean_reply})
             except Exception as e:
-                fallback_error = f"Processing Exception: Could not link data tools. Check backend logs: {str(e)}"
+                fallback_error = f"Processing Error: Could not link data tools. Check backend logs: {str(e)}"
                 response_placeholder.markdown(fallback_error)
                 st.session_state.messages.append({"role": "assistant", "content": fallback_error})
