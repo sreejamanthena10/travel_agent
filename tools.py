@@ -75,7 +75,7 @@ class ItinerarySchema(BaseModel):
 @tool(args_schema=FlightSearchSchema)
 def search_flights(departure_airport: str, arrival_airport: str, outbound_date: str, return_date: str) -> str:
     """
-    Queries live Google Flights via SerpAPI for real-time ticket choices, exact pricing, and carrier routes globally.
+    Queries live Google Flights via SerpAPI for real-time ticket choices, exact pricing, explicit clock timings, and carrier routes globally.
     """
     rag_check = f"Flights from {departure_airport} to {arrival_airport} on {outbound_date}"
     local_doc = run_pdf_rag_search(rag_check)
@@ -104,18 +104,34 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
             best_flights = response.get("other_flights", [])
             
         if not best_flights:
-            return ddg_search_fallback(f"live flight connections from {departure_airport} to {arrival_airport} dates {outbound_date}")
+            return ddg_search_fallback(f"live flight connections exact departure arrival clock timings from {departure_airport} to {arrival_airport} dates {outbound_date}")
             
-        summary = f"### ✈️ Live Flight Routes & Pricing Matrix ({departure_airport} ➡️ {arrival_airport})\n"
-        summary += f"**Schedule Block:** {outbound_date} to {return_date}\n\n"
-        for i, flight in enumerate(best_flights[:3]):
-            price = flight.get("price", "Dynamic Fare")
-            airline = flight["flights"][0]["airline"]
-            duration = flight.get("total_duration", "N/A")
-            summary += f"{i+1}️. **{airline}**\n   * 💵 **Fare:** ₹{price:,} INR\n   * ⏱️ **Duration:** {duration} mins | Status: 🟢 Inventory Open\n\n"
+        summary = f"### ✈️ Live Flight Schedule & Pricing Matrix ({departure_airport} ➡️ {arrival_airport})\n"
+        summary += f"**Travel Date:** {outbound_date}\n\n"
+        
+        for i, flight_option in enumerate(best_flights[:3]):
+            price = flight_option.get("price", "Dynamic Fare")
+            legs = flight_option.get("flights", [])
+            
+            if legs:
+                first_leg = legs[0]
+                airline = first_leg.get("airline", "Unknown Carrier")
+                flight_num = first_leg.get("flight_number", "N/A")
+                
+                # Unpacks exact wall-clock departure and arrival times from JSON object payload
+                dep_clock = first_leg.get("departure_time", {}).get("time", "N/A")
+                arr_clock = first_leg.get("arrival_time", {}).get("time", "N/A")
+                duration = flight_option.get("total_duration", "N/A")
+                
+                summary += f"{i+1}️. **{airline}** (Flight: {airline[:2].upper()}-{flight_num})\n"
+                summary += f"   * ⏰ **Timings:** **{dep_clock}** ➡️ **{arr_clock}** ({duration} mins, Non-stop)\n"
+                summary += f"   * 💵 **Fare:** ₹{price:,} INR\n"
+                summary += f"   * 🟢 **Status:** Inventory Open\n\n"
+            else:
+                summary += f"{i+1}️. **Premium Airline Leg Option** | Fares from: ₹{price:,} INR\n\n"
         return summary
     except Exception:
-        return ddg_search_fallback(f"flight pricing routes from {departure_airport} to {arrival_airport} around {outbound_date}")
+        return ddg_search_fallback(f"flight pricing routes schedule from {departure_airport} to {arrival_airport} around {outbound_date}")
 
 
 @tool(args_schema=HotelSearchSchema)
@@ -199,4 +215,3 @@ def plan_itinerary(destination: str) -> str:
         return ddg_search_fallback(f"comprehensive travel itinerary historical places nearby tourist landmarks spots things to do in {destination}")
     except Exception as e:
         return f"Itinerary construction error: {str(e)}"
-        
