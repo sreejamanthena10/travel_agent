@@ -118,12 +118,23 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
                 airline = first_leg.get("airline", "Unknown Carrier")
                 flight_num = first_leg.get("flight_number", "N/A")
                 
-                # Verified SerpAPI precise time strings
-                dep_clock = first_leg.get("departure_airport_time", "N/A")
-                arr_clock = first_leg.get("arrival_airport_time", "N/A")
+                # Direct check across alternative SerpAPI nesting schemas
+                dep_clock = "N/A"
+                arr_clock = "N/A"
                 
-                if " " in dep_clock: dep_clock = dep_clock.split(" ")[-1]
-                if " " in arr_clock: arr_clock = arr_clock.split(" ")[-1]
+                # Check for alternative key schema structures directly
+                if "departure_airport_time" in first_leg:
+                    dep_clock = first_leg.get("departure_airport_time")
+                elif isinstance(first_leg.get("departure_airport"), dict):
+                    dep_clock = first_leg["departure_airport"].get("time", "N/A")
+                    
+                if "arrival_airport_time" in first_leg:
+                    arr_clock = first_leg.get("arrival_airport_time")
+                elif isinstance(first_leg.get("arrival_airport"), dict):
+                    arr_clock = first_leg["arrival_airport"].get("time", "N/A")
+                
+                if " " in str(dep_clock): dep_clock = str(dep_clock).split(" ")[-1]
+                if " " in str(arr_clock): arr_clock = str(arr_clock).split(" ")[-1]
                 
                 duration = flight_option.get("total_duration", "N/A")
                 
@@ -135,7 +146,7 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
                 summary += f"{i+1}️. **Premium Carrier Leg Option** | Fares from: ₹{price:,} INR\n\n"
         return summary
     except Exception:
-        return ddg_search_fallback(f"flight pricing routes schedule from {departure_airport} to {arrival_airport} around {outbound_date}")
+        return ddg_search_fallback(f"flight connections exact departure arrival clock timings from {departure_airport} to {arrival_airport} dates {outbound_date}")
 
 
 @tool(args_schema=HotelSearchSchema)
@@ -184,78 +195,3 @@ def search_hotels(destination_city: str, check_in_date: str, check_out_date: str
             amenities_str = ", ".join(amenities[:4]) if amenities else "Free Wi-Fi, Pool, Room Service"
             
             description = hotel.get("description", "Premium property located near key regional transit hubs.")
-            link = hotel.get("link", "#")
-            
-            summary += f"{i+1}️. **[{name}]({link})**\n"
-            summary += f"   * 📝 **Property Profile:** {description}\n"
-            summary += f"   * ⭐ **User Rating:** {rating}/5 ({reviews_count} verified reviews)\n"
-            summary += f"   * 💵 **Rate Pricing Breakdown:**\n"
-            summary += f"     - Base Rate: {before_taxes} per night\n"
-            summary += f"     - **Final Rate (inc. Taxes):** {lowest_price} INR\n"
-            summary += f"   * 🌟 **Key Perks & Amenities:** `{amenities_str}`\n"
-            summary += f"   * 🟢 **Booking Status:** Rooms verified open for select tier options\n\n"
-        return summary
-    except Exception:
-        return ddg_search_fallback(f"available hotels stay choices pricing metrics amenities in {destination_city} dates {check_in_date}")
-
-
-@tool(args_schema=WeatherSchema)
-def get_weather(target_city: str) -> str:
-    """
-    Fetches genuine real-time current temperatures, wind speeds, UV index indexes, and structured upcoming forecast blocks globally.
-    """
-    city_name = target_city.strip().title()
-    
-    if "WEATHER_API_KEY" in st.secrets and st.secrets["WEATHER_API_KEY"].strip():
-        url = f"https://api.weatherapi.com/v1/forecast.json?key={st.secrets['WEATHER_API_KEY']}&q={city_name}&days=3&aqi=no"
-        try:
-            response = requests.get(url).json()
-            if "error" not in response:
-                location = response["location"]["name"]
-                country = response["location"]["country"]
-                
-                current = response["current"]
-                temp_c = current["temp_c"]
-                condition = current["condition"]["text"]
-                humidity = current["humidity"]
-                wind_kph = current["wind_kph"]
-                uv_index = current["uv"]
-                feelslike_c = current["feelslike_c"]
-                
-                summary = f"### 🌤️ Live Exhaustive Weather Profile for {location}, {country}\n"
-                summary += f"* **Current Temperature:** {temp_c}°C (Feels like: {feelslike_c}°C)\n"
-                summary += f"* **Atmospheric Condition:** {condition}\n"
-                summary += f"* **Humidity Levels:** {humidity}% | 💨 **Wind Speed:** {wind_kph} km/h\n"
-                summary += f"* **UV Index Protection Metric:** {uv_index}\n\n"
-                
-                forecast_days = response.get("forecast", {}).get("forecastday", [])
-                if forecast_days:
-                    summary += "**📅 3-Day Regional Forecast Look-Ahead:**\n"
-                    for day_item in forecast_days:
-                        date = day_item.get("date", "N/A")
-                        day_data = day_item.get("day", {})
-                        max_temp = day_data.get("maxtemp_c", "N/A")
-                        min_temp = day_data.get("mintemp_c", "N/A")
-                        day_condition = day_data.get("condition", {}).get("text", "Clear")
-                        summary += f"  - **{date}:** Max: {max_temp}°C, Min: {min_temp}°C | *{day_condition}*\n"
-                return summary
-        except Exception:
-            pass
-
-    search_query = f"current detailed temperature conditions humidity wind speed forecast inside city {city_name} today"
-    return ddg_search_fallback(search_query)
-
-
-@tool(args_schema=ItinerarySchema)
-def plan_itinerary(destination: str) -> str:
-    """
-    Assembles customized, highly scannable day-by-day sightseeing timelines, tracking nearby attractions globally.
-    """
-    local_doc = run_pdf_rag_search(f"itinerary sightseeing guide for {destination}")
-    if local_doc.strip():
-        return local_doc
-        
-    try:
-        return ddg_search_fallback(f"comprehensive travel itinerary historical places nearby tourist landmarks spots things to do in {destination}")
-    except Exception as e:
-        return f"Itinerary construction error: {str(e)}"
