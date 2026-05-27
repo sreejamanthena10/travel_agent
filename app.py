@@ -182,13 +182,25 @@ if user_input := st.chat_input("Describe your ideal destination journey or askin
             response_placeholder.markdown("⚠️ Token stream parsing failure. Save GEMINI_API_KEYS inside your secrets pool panel.")
         else:
             try:
-                raw_key = st.secrets["GEMINI_API_KEYS"]
-                clean_key = raw_key[0] if isinstance(raw_key, list) else raw_key.strip()
-                clean_key = clean_key.replace("[", "").replace("]", "").replace('"', '').replace("'", "").strip()
+                raw_keys = st.secrets["GEMINI_API_KEYS"]
+                
+                # REINFORCED COMMA SPLITTER ENGINE
+                if isinstance(raw_keys, str):
+                    keys_list = [k.strip() for k in raw_keys.split(",") if k.strip()]
+                elif isinstance(raw_keys, list):
+                    keys_list = [str(k).strip() for k in raw_keys if str(k).strip()]
+                else:
+                    keys_list = []
+                
+                if not keys_list:
+                    st.error("No valid keys found in secret configuration.")
+                    st.stop()
+                
+                # Extract the first working key string safely
+                clean_key = keys_list[0].replace("[", "").replace("]", "").replace('"', '').replace("'", "").strip()
                 
                 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=clean_key, temperature=0.0)
                 
-                # VERSION-PROOF: Removed state_modifier/messages_modifier args completely to prevent package crashes
                 agent_executor = create_react_agent(
                     llm, 
                     tools=[search_flights, search_hotels, get_weather, plan_itinerary]
@@ -196,7 +208,6 @@ if user_input := st.chat_input("Describe your ideal destination journey or askin
                 
                 config = {"configurable": {"thread_id": st.session_state.session_id}}
                 
-                # Injects the system prompt directly as a message token so it works on ALL versions flawlessly
                 messages_payload = [
                     SystemMessage(content=SYSTEM_PROMPT),
                     HumanMessage(content=user_input)
@@ -205,7 +216,6 @@ if user_input := st.chat_input("Describe your ideal destination journey or askin
                 agent_output = agent_executor.invoke({"messages": messages_payload}, config=config)
                 raw_reply = str(agent_output["messages"][-1].content)
                 
-                # Clean up any trailing signature tokens
                 clean_reply = raw_reply.split("extras")[0].split("signature")[0].split("{'type'")[0].strip()
                 clean_reply = clean_reply.rstrip("]}[',: \n\r\"")
                 
