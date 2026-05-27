@@ -4,7 +4,7 @@ import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 
-# Direct explicit imports to prevent any silent loading bugs
+# Direct explicit tool imports
 try:
     from tools import search_flights, search_hotels, get_weather, plan_itinerary
 except ImportError:
@@ -16,14 +16,9 @@ except ImportError:
 def get_keys_pool():
     if "GEMINI_API_KEYS" not in st.secrets:
         return []
-    
     raw_keys = st.secrets["GEMINI_API_KEYS"]
-    
-    # FIX: If it's already a list (TOML Array), clean and return it immediately!
     if isinstance(raw_keys, list):
         return [str(k).strip() for k in raw_keys if str(k).strip()]
-        
-    # If it's a single string, parse it safely
     try:
         cleaned_string = str(raw_keys).replace("[", "").replace("]", "").replace('"', '').replace("'", "")
         return [k.strip() for k in cleaned_string.split(",") if k.strip()]
@@ -35,17 +30,23 @@ def get_agent():
     if not keys_pool:
         return None
 
-    # Pick the primary working key instantly
-    primary_key = keys_pool[0]
-    try:
-        genai.configure(api_key=primary_key)
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
-            google_api_key=primary_key,
-            temperature=0.2
-        )
-        
-        tools_list = [search_flights, search_hotels, get_weather, plan_itinerary]
-        return create_react_agent(llm, tools=tools_list)
-    except Exception:
-        return None
+    tools_list = [search_flights, search_hotels, get_weather, plan_itinerary]
+
+    # Dynamically build and test the agent against the active keys pool
+    for active_key in keys_pool:
+        try:
+            genai.configure(api_key=active_key)
+            llm = ChatGoogleGenerativeAI(
+                model="gemini-2.5-flash",
+                google_api_key=active_key,
+                temperature=0.1,  # Lower temperature = faster, more focused tool calling
+                max_retries=1    # Stops the agent from wasting time retrying a dead key
+            )
+            
+            # Re-compile state graph for this key instance
+            agent_executor = create_react_agent(llm, tools=tools_list)
+            return agent_executor
+        except Exception:
+            continue # If this key has an issue, immediately skip to the next one
+            
+    return None
