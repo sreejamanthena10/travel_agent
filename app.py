@@ -6,6 +6,7 @@ import re
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.prebuilt import create_react_agent
 
 # --- 1. SYSTEM PAGE CONFIGURATIONS ---
@@ -187,17 +188,24 @@ if user_input := st.chat_input("Describe your ideal destination journey or askin
                 
                 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=clean_key, temperature=0.0)
                 
+                # VERSION-PROOF: Removed state_modifier/messages_modifier args completely to prevent package crashes
                 agent_executor = create_react_agent(
                     llm, 
-                    tools=[search_flights, search_hotels, get_weather, plan_itinerary], 
-                    messages_modifier=SYSTEM_PROMPT
+                    tools=[search_flights, search_hotels, get_weather, plan_itinerary]
                 )
                 
                 config = {"configurable": {"thread_id": st.session_state.session_id}}
-                agent_output = agent_executor.invoke({"messages": [("user", user_input)]}, config=config)
                 
+                # Injects the system prompt directly as a message token so it works on ALL versions flawlessly
+                messages_payload = [
+                    SystemMessage(content=SYSTEM_PROMPT),
+                    HumanMessage(content=user_input)
+                ]
+                
+                agent_output = agent_executor.invoke({"messages": messages_payload}, config=config)
                 raw_reply = str(agent_output["messages"][-1].content)
                 
+                # Clean up any trailing signature tokens
                 clean_reply = raw_reply.split("extras")[0].split("signature")[0].split("{'type'")[0].strip()
                 clean_reply = clean_reply.rstrip("]}[',: \n\r\"")
                 
