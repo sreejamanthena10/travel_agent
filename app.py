@@ -21,7 +21,7 @@ if "theme" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 
-# --- 3. HEADER THEME CONTROLLER (Clean ON/OFF Toggle Switch) ---
+# --- 3. HEADER THEME CONTROLLER (ON/OFF Toggle) ---
 col_space, col_toggle = st.columns([8, 2])
 with col_toggle:
     is_dark = st.toggle("🌙 Dark Mode (ON/OFF)", value=(st.session_state.theme == "dark"))
@@ -155,7 +155,7 @@ def plan_itinerary(destination: str) -> str:
     """Assembles customized day-by-day sightseeing timelines."""
     return f"Complete destination tracking activities for {destination} loaded successfully."
 
-# --- SYSTEM PROMPT (BACKWARD COMPATIBLE SYSTEM DIRECTION) ---
+# --- SYSTEM PROMPT ---
 SYSTEM_PROMPT = """You are a premium AI Travel Agent. 
 When asked for a trip plan with a specific budget limit:
 1. Construct a clean, comprehensive markdown table titled 'Comprehensive Trip Expense Sheet (INR)'.
@@ -164,4 +164,47 @@ When asked for a trip plan with a specific budget limit:
 
 # --- 8. CHAT FEED DISPLAY LOOP ---
 for msg in st.session_state.messages:
-    with st.
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# --- 9. AI PROCESSING PIPELINE ENGINE ---
+if user_input := st.chat_input("Describe your ideal destination journey or asking criteria here..."):
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
+        
+    with st.chat_message("assistant"):
+        response_placeholder = st.empty()
+        response_placeholder.markdown("🔍 *Consulting global live data distribution servers...*")
+        
+        if "GEMINI_API_KEYS" not in st.secrets:
+            response_placeholder.markdown("⚠️ Token stream parsing failure. Save GEMINI_API_KEYS inside your secrets pool panel.")
+        else:
+            try:
+                raw_key = st.secrets["GEMINI_API_KEYS"]
+                clean_key = raw_key[0] if isinstance(raw_key, list) else raw_key.strip()
+                clean_key = clean_key.replace("[", "").replace("]", "").replace('"', '').replace("'", "").strip()
+                
+                llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=clean_key, temperature=0.0)
+                
+                agent_executor = create_react_agent(
+                    llm, 
+                    tools=[search_flights, search_hotels, get_weather, plan_itinerary], 
+                    messages_modifier=SYSTEM_PROMPT
+                )
+                
+                config = {"configurable": {"thread_id": st.session_state.session_id}}
+                agent_output = agent_executor.invoke({"messages": [("user", user_input)]}, config=config)
+                
+                raw_reply = str(agent_output["messages"][-1].content)
+                
+                clean_reply = raw_reply.split("extras")[0].split("signature")[0].split("{'type'")[0].strip()
+                clean_reply = clean_reply.rstrip("]}[',: \n\r\"")
+                
+                if not clean_reply.strip() or len(clean_reply) < 5:
+                    clean_reply = raw_reply
+                    
+                response_placeholder.markdown(clean_reply)
+                st.session_state.messages.append({"role": "assistant", "content": clean_reply})
+            except Exception as e:
+                response_placeholder.markdown(f"Connection Error: {str(e)}")
