@@ -6,14 +6,14 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.tools import DuckDuckGoSearchRun
 
-# --- CORE INNER EXECUTION ENGINE ---
-def run_live_web_search(query: str) -> str:
-    """Helper function to execute real-time web lookups safely."""
+# --- CORE INNER LIVE EXECUTION UTILITY ---
+def run_live_web_lookup(search_query: str) -> str:
+    """Helper function to cleanly scrape live data directly from the active web stream."""
     try:
         search_engine = DuckDuckGoSearchRun()
-        return str(search_engine.run(query))
+        return str(search_engine.run(search_query))
     except Exception as e:
-        return f"Live lookup temporarily unavailable: {str(e)}"
+        return f"Live web data stream temporarily unavailable: {str(e)}"
 
 def run_pdf_rag_search(query: str) -> str:
     """Helper function to execute RAG similarity searches over local travel documents."""
@@ -43,47 +43,50 @@ def run_pdf_rag_search(query: str) -> str:
     return "No local travel documents found in the database directory."
 
 
-# --- REQUIRED AGENT COUPLING GATEWAY (4 ALIGNED TOOL FUNCTIONS) ---
+# --- 4 REQUIRED LIVE AGENT TOOL VECTOR ENTRY CORES ---
 
 @tool
 def search_flights(query: str) -> str:
     """
-    Searches the live web for global travel information, airline schedules, plane metrics, 
-    and route prices matching the user's destination parameters.
+    Searches the live web for completely real-time flight options, active airline carrier schedules, 
+    and direct route pricing tables matching the user's destination constraints.
     """
-    # First check if the answer exists inside your uploaded documents
+    # Check local RAG context index files first
     local_doc_result = run_pdf_rag_search(query)
     if "No local travel documents" not in local_doc_result and local_doc_result.strip():
         return local_doc_result
-    # Otherwise, fetch real-time true details from the live web engine
-    return run_live_web_search(f"flights schedule carrier price matrix {query}")
+    
+    # Execute a live lookup on the web for real-time airline options
+    return run_live_web_lookup(f"current flight schedules airline routes ticket pricing metrics for {query} 2026")
 
 @tool
 def search_hotels(query: str) -> str:
     """
-    Locates verified premium accommodations, tier-priced stay matrices, and rating features 
-    at specific user coordinates.
+    Locates verified premium accommodations, real physical lodging options, and active stay pricing 
+    inside specific geographic location parameters.
     """
     local_doc_result = run_pdf_rag_search(query)
     if "No local travel documents" not in local_doc_result and local_doc_result.strip():
         return local_doc_result
-    return run_live_web_search(f"hotels accommodations stay pricing rate details {query}")
+        
+    return run_live_web_lookup(f"verified actual hotels accommodations stay options pricing details inside {query}")
 
 @tool
 def get_weather(query: str) -> str:
     """
-    Fetches official current atmospheric conditions, temperature trends, and regional 
-    climate forecast indicators.
+    Fetches genuine real-time meteorological conditions, active temperature readings, and localized 
+    regional forecast tables.
     """
-    return run_live_web_search(f"current weather temperature forecast metrics {query}")
+    return run_live_web_lookup(f"current weather temperature degrees meteorological report for {query}")
 
 @tool
 def plan_itinerary(query: str) -> str:
     """
-    Builds customized, scannable day-by-day sightseeing blueprints, tracking hidden tourist 
+    Assembles customized, highly scannable day-by-day sightseeing timelines, tracking hidden tourist 
     landmarks and local travel events.
     """
     local_doc_result = run_pdf_rag_search(query)
     if "No local travel documents" not in local_doc_result and local_doc_result.strip():
         return local_doc_result
-    return run_live_web_search(f"travel itinerary tourist spots sightseeing guide {query}")
+        
+    return run_live_web_lookup(f"comprehensive day travel itinerary sightseeing landmarks path timeline for {query}")
