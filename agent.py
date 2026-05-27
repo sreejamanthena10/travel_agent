@@ -25,31 +25,43 @@ def get_keys_pool():
     if "GEMINI_API_KEYS" not in st.secrets:
         return []
     raw_keys = st.secrets["GEMINI_API_KEYS"]
+    
+    # FIX: If it's a standard single string, wrap it into a list instantly
+    if isinstance(raw_keys, str):
+        # Check if the user used a comma-separated format string inside secrets
+        if "," in raw_keys:
+            return [k.strip() for k in raw_keys.split(",") if k.strip()]
+        return [raw_keys.strip()]
+        
     if isinstance(raw_keys, list):
         return [str(k).strip() for k in raw_keys if str(k).strip()]
-    try:
-        cleaned_string = str(raw_keys).replace("[", "").replace("]", "").replace('"', '').replace("'", "")
-        return [k.strip() for k in cleaned_string.split(",") if k.strip()]
-    except Exception:
-        return []
+        
+    return []
 
 def get_agent():
     keys_pool = get_keys_pool()
     if not keys_pool:
         return None
+        
     tools_list = [search_flights, search_hotels, get_weather, plan_itinerary]
+    
     for active_key in keys_pool:
         try:
-            genai.configure(api_key=active_key)
+            # Strip off any accidental trailing characters or brackets from the string token
+            clean_key = active_key.replace("[", "").replace("]", "").replace('"', '').replace("'", "").strip()
+            
+            genai.configure(api_key=clean_key)
             llm = ChatGoogleGenerativeAI(
                 model="gemini-2.5-flash",
-                google_api_key=active_key,
+                google_api_key=clean_key,
                 temperature=0.0,
                 max_retries=3
             )
+            
+            # Verify endpoint verification check runs smoothly
             llm.invoke("ping")
-            # Injects systemic travel directives directly into the compilation framework
             return create_react_agent(llm, tools=tools_list, state_modifier=SYSTEM_PROMPT)
         except Exception:
             continue
+            
     return None
