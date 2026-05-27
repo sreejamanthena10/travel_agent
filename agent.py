@@ -4,14 +4,13 @@ import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 
-# Direct explicit tool imports
 try:
     from tools import search_flights, search_hotels, get_weather, plan_itinerary
 except ImportError:
-    def search_flights(*args, **kwargs): return "Flights engine currently updating."
-    def search_hotels(*args, **kwargs): return "Hotels database currently updating."
-    def get_weather(*args, **kwargs): return "Weather telemetry system offline."
-    def plan_itinerary(*args, **kwargs): return "Itinerary planner system offline."
+    def search_flights(*args, **kwargs): return "Flights engine updating."
+    def search_hotels(*args, **kwargs): return "Hotels database updating."
+    def get_weather(*args, **kwargs): return "Weather telemetry offline."
+    def plan_itinerary(*args, **kwargs): return "Itinerary planner offline."
 
 def get_keys_pool():
     if "GEMINI_API_KEYS" not in st.secrets:
@@ -32,21 +31,22 @@ def get_agent():
 
     tools_list = [search_flights, search_hotels, get_weather, plan_itinerary]
 
-    # Dynamically build and test the agent against the active keys pool
+    # Dynamically verify and test keys at runtime
     for active_key in keys_pool:
         try:
             genai.configure(api_key=active_key)
             llm = ChatGoogleGenerativeAI(
                 model="gemini-2.5-flash",
                 google_api_key=active_key,
-                temperature=0.1,  # Lower temperature = faster, more focused tool calling
-                max_retries=1    # Stops the agent from wasting time retrying a dead key
+                temperature=0.1,
+                max_retries=0  # Prevents hanging; immediately drops a blocked key
             )
             
-            # Re-compile state graph for this key instance
-            agent_executor = create_react_agent(llm, tools=tools_list)
-            return agent_executor
+            # Fast heartbeat test check to catch 429 errors instantly before compiling the UI
+            llm.invoke("ping")
+            
+            return create_react_agent(llm, tools=tools_list)
         except Exception:
-            continue # If this key has an issue, immediately skip to the next one
+            continue  # Catch 429 error instantly and skip to the next unblocked key
             
     return None
