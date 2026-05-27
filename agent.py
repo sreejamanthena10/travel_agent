@@ -26,9 +26,7 @@ def get_keys_pool():
         return []
     raw_keys = st.secrets["GEMINI_API_KEYS"]
     
-    # FIX: If it's a standard single string, wrap it into a list instantly
     if isinstance(raw_keys, str):
-        # Check if the user used a comma-separated format string inside secrets
         if "," in raw_keys:
             return [k.strip() for k in raw_keys.split(",") if k.strip()]
         return [raw_keys.strip()]
@@ -45,9 +43,9 @@ def get_agent():
         
     tools_list = [search_flights, search_hotels, get_weather, plan_itinerary]
     
+    # Grab the first key in your pool directly without burning rate limits on a test ping
     for active_key in keys_pool:
         try:
-            # Strip off any accidental trailing characters or brackets from the string token
             clean_key = active_key.replace("[", "").replace("]", "").replace('"', '').replace("'", "").strip()
             
             genai.configure(api_key=clean_key)
@@ -58,8 +56,7 @@ def get_agent():
                 max_retries=3
             )
             
-            # Verify endpoint verification check runs smoothly
-            llm.invoke("ping")
+            # --- FIXED: TEST PING REMOVED TO PREVENT COLD-START 429 RATE LIMIT BLOCKS ---
             return create_react_agent(llm, tools=tools_list, state_modifier=SYSTEM_PROMPT)
         except Exception:
             continue
