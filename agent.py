@@ -31,7 +31,6 @@ def get_agent():
 
     tools_list = [search_flights, search_hotels, get_weather, plan_itinerary]
 
-    # Dynamically verify and test keys at runtime
     for active_key in keys_pool:
         try:
             genai.configure(api_key=active_key)
@@ -39,14 +38,14 @@ def get_agent():
                 model="gemini-2.5-flash",
                 google_api_key=active_key,
                 temperature=0.1,
-                max_retries=0  # Prevents hanging; immediately drops a blocked key
+                max_retries=3  # Smart choice: Automatically bypasses temporary 503 traffic spikes in milliseconds
             )
             
-            # Fast heartbeat test check to catch 429 errors instantly before compiling the UI
+            # Fast verification test
             llm.invoke("ping")
             
             return create_react_agent(llm, tools=tools_list)
         except Exception:
-            continue  # Catch 429 error instantly and skip to the next unblocked key
+            continue  # Seamlessly skips to the next key if a key is hard-blocked or exhausted
             
     return None
