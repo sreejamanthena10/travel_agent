@@ -1,6 +1,5 @@
 import os
 import streamlit as st
-import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 
@@ -43,20 +42,19 @@ def get_agent():
         
     tools_list = [search_flights, search_hotels, get_weather, plan_itinerary]
     
-    # Grab the first key in your pool directly without burning rate limits on a test ping
     for active_key in keys_pool:
         try:
+            # Clean up token packaging characters
             clean_key = active_key.replace("[", "").replace("]", "").replace('"', '').replace("'", "").strip()
             
-            genai.configure(api_key=clean_key)
+            # Use standard direct initialization without loading the legacy package wrapper
             llm = ChatGoogleGenerativeAI(
                 model="gemini-2.5-flash",
-                google_api_key=clean_key,
+                api_key=clean_key,  # Direct parameter initialization pass
                 temperature=0.0,
                 max_retries=3
             )
             
-            # --- FIXED: TEST PING REMOVED TO PREVENT COLD-START 429 RATE LIMIT BLOCKS ---
             return create_react_agent(llm, tools=tools_list, state_modifier=SYSTEM_PROMPT)
         except Exception:
             continue
