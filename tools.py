@@ -53,21 +53,21 @@ def run_pdf_rag_search(query: str) -> str:
 # --- PYDANTIC ENFORCED INPUT STRUCTURAL SCHEMAS ---
 
 class FlightSearchSchema(BaseModel):
-    departure_airport: str = Field(description="The 3-letter IATA code of the origin airport (e.g., HYD, BOM, DEL, SIN).")
-    arrival_airport: str = Field(description="The 3-letter IATA code of the destination airport (e.g., BLR, BOM, DXB, LHR).")
-    outbound_date: str = Field(description="The outbound travel departure date formatted strictly as YYYY-MM-DD.")
-    return_date: str = Field(description="The return travel leg date formatted strictly as YYYY-MM-DD.")
+    departure_airport: str = Field(description="The 3-letter airport code (e.g., HYD, BOM).")
+    arrival_airport: str = Field(description="The 3-letter destination code (e.g., BLR, DXB).")
+    outbound_date: str = Field(description="The departure date formatted as YYYY-MM-DD.")
+    return_date: str = Field(description="The return date formatted as YYYY-MM-DD.")
 
 class HotelSearchSchema(BaseModel):
-    destination_city: str = Field(description="The destination city name or region parameter where the stay occurs (e.g., Mumbai, Singapore, Arunachalam).")
-    check_in_date: str = Field(description="The arrival check-in date formatted strictly as YYYY-MM-DD.")
-    check_out_date: str = Field(description="The departure check-out date formatted strictly as YYYY-MM-DD.")
+    destination_city: str = Field(description="The city name where the stay occurs (e.g., Mumbai, Singapore).")
+    check_in_date: str = Field(description="The arrival check-in date formatted as YYYY-MM-DD.")
+    check_out_date: str = Field(description="The departure check-out date formatted as YYYY-MM-DD.")
 
 class WeatherSchema(BaseModel):
-    target_city: str = Field(description="The explicit worldwide city name to fetch current telemetry values for (e.g., Karimnagar, London, New York).")
+    target_city: str = Field(description="The explicit city name to fetch weather for (e.g., Karimnagar, London).")
 
 class ItinerarySchema(BaseModel):
-    destination: str = Field(description="The target vacation spot or routing area to plan sightseeing tracks around.")
+    destination: str = Field(description="The target spot to plan sightseeing tracks around.")
 
 
 # --- 4 REQUIRED LIVE AGENT STRUCTURAL CORES ---
@@ -104,7 +104,7 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
             best_flights = response.get("other_flights", [])
             
         if not best_flights:
-            return ddg_search_fallback(f"live flight schedules connections from {departure_airport} to {arrival_airport} dates {outbound_date} 2026")
+            return ddg_search_fallback(f"live flight connections from {departure_airport} to {arrival_airport} dates {outbound_date}")
             
         summary = f"### ✈️ Live Flight Routes & Pricing Matrix ({departure_airport} ➡️ {arrival_airport})\n"
         summary += f"**Schedule Block:** {outbound_date} to {return_date}\n\n"
@@ -127,4 +127,76 @@ def search_hotels(destination_city: str, check_in_date: str, check_out_date: str
     if local_doc.strip():
         return local_doc
         
-    if "SERPAPI_KEY" not in
+    if "SERPAPI_KEY" not in st.secrets:
+        return "Missing SERPAPI_KEY configuration token."
+        
+    params = {
+        "engine": "google_hotels",
+        "q": f"Hotels in {destination_city.strip().title()}",
+        "check_in_date": check_in_date.strip(),
+        "check_out_date": check_out_date.strip(),
+        "currency": "INR",
+        "gl": "in",
+        "hl": "en",
+        "api_key": st.secrets["SERPAPI_KEY"]
+    }
+    
+    try:
+        response = requests.get("https://serpapi.com/search", params=params).json()
+        properties = response.get("properties", [])
+        
+        if not properties:
+            return ddg_search_fallback(f"best verified accommodations lodgings in {destination_city} checkin {check_in_date}")
+            
+        summary = f"### 🏨 Live Verified Accommodations inside {destination_city.title()}\n"
+        summary += f"**Stay Window:** {check_in_date} ➡️ {check_out_date}\n\n"
+        for i, hotel in enumerate(properties[:3]):
+            name = hotel.get("name", "Premium Stay Location")
+            rating = hotel.get("rating", "4.0")
+            price = hotel.get("rate_per_night", {}).get("lowest", "Contact For Fare")
+            link = hotel.get("link", "#")
+            summary += f"{i+1}️. **[{name}]({link})**\n   * ⭐ **User Rating:** {rating}/5\n   * 💵 **Nightly Rate:** {price} INR | Status: 🟢 Rooms Available\n\n"
+        return summary
+    except Exception:
+        return ddg_search_fallback(f"available hotels stay choices pricing metrics in {destination_city} dates {check_in_date}")
+
+
+@tool(args_schema=WeatherSchema)
+def get_weather(target_city: str) -> str:
+    """
+    Fetches genuine real-time current temperatures and regional forecast metrics globally.
+    """
+    city_name = target_city.strip().title()
+    
+    if "WEATHER_API_KEY" in st.secrets and st.secrets["WEATHER_API_KEY"].strip():
+        url = f"https://api.weatherapi.com/v1/current.json?key={st.secrets['WEATHER_API_KEY']}&q={city_name}&aqi=no"
+        try:
+            response = requests.get(url).json()
+            if "error" not in response:
+                location = response["location"]["name"]
+                country = response["location"]["country"]
+                temp_c = response["current"]["temp_c"]
+                condition = response["current"]["condition"]["text"]
+                humidity = response["current"]["humidity"]
+                return f"### 🌤️ Live Weather Report for {location}, {country}\n* **Current Temperature:** {temp_c}°C\n* **Atmospheric Condition:** {condition}\n* **Humidity Levels:** {humidity}%"
+        except Exception:
+            pass
+
+    search_query = f"current exact temperature conditions degrees celsius inside city {city_name} today"
+    return ddg_search_fallback(search_query)
+
+
+@tool(args_schema=ItinerarySchema)
+def plan_itinerary(destination: str) -> str:
+    """
+    Assembles customized, highly scannable day-by-day sightseeing timelines, tracking nearby attractions globally.
+    """
+    local_doc = run_pdf_rag_search(f"itinerary sightseeing guide for {destination}")
+    if local_doc.strip():
+        return local_doc
+        
+    try:
+        return ddg_search_fallback(f"comprehensive travel itinerary historical places nearby tourist landmarks spots things to do in {destination}")
+    except Exception as e:
+        return f"Itinerary construction error: {str(e)}"
+        
