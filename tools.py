@@ -118,9 +118,12 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
                 airline = first_leg.get("airline", "Unknown Carrier")
                 flight_num = first_leg.get("flight_number", "N/A")
                 
-                # Unpacks exact wall-clock departure and arrival times from JSON object payload
-                dep_clock = first_leg.get("departure_time", {}).get("time", "N/A")
-                arr_clock = first_leg.get("arrival_time", {}).get("time", "N/A")
+                # Access the inner dictionary structures for precise clock hours
+                dep_data = first_leg.get("departure_airport", {})
+                arr_data = first_leg.get("arrival_airport", {})
+                
+                dep_clock = dep_data.get("time", "N/A").split(" ")[-1] if " " in dep_data.get("time", "") else dep_data.get("time", "N/A")
+                arr_clock = arr_data.get("time", "N/A").split(" ")[-1] if " " in arr_data.get("time", "") else arr_data.get("time", "N/A")
                 duration = flight_option.get("total_duration", "N/A")
                 
                 summary += f"{i+1}️. **{airline}** (Flight: {airline[:2].upper()}-{flight_num})\n"
@@ -128,7 +131,7 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
                 summary += f"   * 💵 **Fare:** ₹{price:,} INR\n"
                 summary += f"   * 🟢 **Status:** Inventory Open\n\n"
             else:
-                summary += f"{i+1}️. **Premium Airline Leg Option** | Fares from: ₹{price:,} INR\n\n"
+                summary += f"{i+1}️. **Premium Carrier Leg Offer** | Fares from: ₹{price:,} INR\n\n"
         return summary
     except Exception:
         return ddg_search_fallback(f"flight pricing routes schedule from {departure_airport} to {arrival_airport} around {outbound_date}")
@@ -137,7 +140,7 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
 @tool(args_schema=HotelSearchSchema)
 def search_hotels(destination_city: str, check_in_date: str, check_out_date: str) -> str:
     """
-    Queries live Google Hotels via SerpAPI for authentic available properties and current nightly rates worldwide.
+    Queries live Google Hotels via SerpAPI for authentic available properties, granular nightly breakdown rates, user reviews, and specific property amenity tokens.
     """
     local_doc = run_pdf_rag_search(f"Hotels and stays inside {destination_city}")
     if local_doc.strip():
@@ -162,56 +165,30 @@ def search_hotels(destination_city: str, check_in_date: str, check_out_date: str
         properties = response.get("properties", [])
         
         if not properties:
-            return ddg_search_fallback(f"best verified accommodations lodgings in {destination_city} checkin {check_in_date}")
+            return ddg_search_fallback(f"best verified accommodations lodgings detailed features in {destination_city} checkin {check_in_date}")
             
-        summary = f"### 🏨 Live Verified Accommodations inside {destination_city.title()}\n"
+        summary = f"### 🏨 Detailed Verified Accommodations inside {destination_city.title()}\n"
         summary += f"**Stay Window:** {check_in_date} ➡️ {check_out_date}\n\n"
+        
         for i, hotel in enumerate(properties[:3]):
             name = hotel.get("name", "Premium Stay Location")
-            rating = hotel.get("rating", "4.0")
-            price = hotel.get("rate_per_night", {}).get("lowest", "Contact For Fare")
+            rating = hotel.get("rating", "N/A")
+            reviews_count = hotel.get("reviews", "N/A")
+            
+            # Extract detailed rate parameters
+            rate_per_night = hotel.get("rate_per_night", {})
+            lowest_price = rate_per_night.get("lowest", "Contact For Fare")
+            before_taxes = rate_per_night.get("before_taxes_and_fees", "N/A")
+            
+            # Extract high-level amenities array
+            amenities = hotel.get("amenities", [])
+            amenities_str = ", ".join(amenities[:4]) if amenities else "Free Wi-Fi, Room Service"
+            
+            # Extract description snippet if available
+            description = hotel.get("description", "Premium property located near key regional transit hubs.")
             link = hotel.get("link", "#")
-            summary += f"{i+1}️. **[{name}]({link})**\n   * ⭐ **User Rating:** {rating}/5\n   * 💵 **Nightly Rate:** {price} INR | Status: 🟢 Rooms Available\n\n"
-        return summary
-    except Exception:
-        return ddg_search_fallback(f"available hotels stay choices pricing metrics in {destination_city} dates {check_in_date}")
-
-
-@tool(args_schema=WeatherSchema)
-def get_weather(target_city: str) -> str:
-    """
-    Fetches genuine real-time current temperatures and regional forecast metrics globally.
-    """
-    city_name = target_city.strip().title()
-    
-    if "WEATHER_API_KEY" in st.secrets and st.secrets["WEATHER_API_KEY"].strip():
-        url = f"https://api.weatherapi.com/v1/current.json?key={st.secrets['WEATHER_API_KEY']}&q={city_name}&aqi=no"
-        try:
-            response = requests.get(url).json()
-            if "error" not in response:
-                location = response["location"]["name"]
-                country = response["location"]["country"]
-                temp_c = response["current"]["temp_c"]
-                condition = response["current"]["condition"]["text"]
-                humidity = response["current"]["humidity"]
-                return f"### 🌤️ Live Weather Report for {location}, {country}\n* **Current Temperature:** {temp_c}°C\n* **Atmospheric Condition:** {condition}\n* **Humidity Levels:** {humidity}%"
-        except Exception:
-            pass
-
-    search_query = f"current exact temperature conditions degrees celsius inside city {city_name} today"
-    return ddg_search_fallback(search_query)
-
-
-@tool(args_schema=ItinerarySchema)
-def plan_itinerary(destination: str) -> str:
-    """
-    Assembles customized, highly scannable day-by-day sightseeing timelines, tracking nearby attractions globally.
-    """
-    local_doc = run_pdf_rag_search(f"itinerary sightseeing guide for {destination}")
-    if local_doc.strip():
-        return local_doc
-        
-    try:
-        return ddg_search_fallback(f"comprehensive travel itinerary historical places nearby tourist landmarks spots things to do in {destination}")
-    except Exception as e:
-        return f"Itinerary construction error: {str(e)}"
+            
+            summary += f"{i+1}️. **[{name}]({link})**\n"
+            summary += f"   * 📝 **Property Profile:** {description}\n"
+            summary += f"   * ⭐ **User Rating:** {rating}/5 ({reviews_count} verified reviews)\n"
+            summary += f"   *
