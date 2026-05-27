@@ -2,11 +2,12 @@ import os
 import requests
 import streamlit as st
 from langchain_core.tools import tool
+from pydantic import BaseModel, Field
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
 
-# --- FAULT-TOLERANT GLOBAL SEARCH CONNECTOR ---
+# --- FAULT-TOLERANT GLOBAL DATA CHANNEL SEARCH CONNECTOR ---
 try:
     from langchain_community.tools import DuckDuckGoSearchRun
     search_tool_instance = DuckDuckGoSearchRun()
@@ -49,149 +50,81 @@ def run_pdf_rag_search(query: str) -> str:
     return ""
 
 
-# --- 4 REQUIRED LIVE AGENT TOOL VECTOR ENTRY CORES ---
+# --- PYDANTIC ENFORCED INPUT STRUCTURAL SCHEMAS ---
 
-@tool
-def search_flights(query: str) -> str:
+class FlightSearchSchema(BaseModel):
+    departure_airport: str = Field(description="The 3-letter IATA code of the origin airport (e.g., HYD, BOM, DEL, SIN).")
+    arrival_airport: str = Field(description="The 3-letter IATA code of the destination airport (e.g., BLR, BOM, DXB, LHR).")
+    outbound_date: str = Field(description="The outbound travel departure date formatted strictly as YYYY-MM-DD.")
+    return_date: str = Field(description="The return travel leg date formatted strictly as YYYY-MM-DD.")
+
+class HotelSearchSchema(BaseModel):
+    destination_city: str = Field(description="The destination city name or region parameter where the stay occurs (e.g., Mumbai, Singapore, Arunachalam).")
+    check_in_date: str = Field(description="The arrival check-in date formatted strictly as YYYY-MM-DD.")
+    check_out_date: str = Field(description="The departure check-out date formatted strictly as YYYY-MM-DD.")
+
+class WeatherSchema(BaseModel):
+    target_city: str = Field(description="The explicit worldwide city name to fetch current telemetry values for (e.g., Karimnagar, London, New York).")
+
+class ItinerarySchema(BaseModel):
+    destination: str = Field(description="The target vacation spot or routing area to plan sightseeing tracks around.")
+
+
+# --- 4 REQUIRED LIVE AGENT STRUCTURAL CORES ---
+
+@tool(args_schema=FlightSearchSchema)
+def search_flights(departure_airport: str, arrival_airport: str, outbound_date: str, return_date: str) -> str:
     """
-    Queries live Google Flights via SerpAPI for real-time ticket choices, prices, and carrier routes globally.
+    Queries live Google Flights via SerpAPI for real-time ticket choices, exact pricing, and carrier routes globally.
     """
-    local_doc = run_pdf_rag_search(query)
+    rag_check = f"Flights from {departure_airport} to {arrival_airport} on {outbound_date}"
+    local_doc = run_pdf_rag_search(rag_check)
     if local_doc.strip():
         return local_doc
 
     if "SERPAPI_KEY" not in st.secrets:
         return "Missing SERPAPI_KEY configuration token."
         
-    api_key = st.secrets["SERPAPI_KEY"]
-    
-    # Clean up common conversational words to isolate destination routing keywords
-    clean_query = query.lower().replace("find flights to", "").replace("flight schedule to", "").replace("flights to", "").replace("flight to", "").strip().title()
-
-    # Dynamic Parameter Mapping for SerpAPI Google Flights Engine
     params = {
         "engine": "google_flights",
-        "q": f"Flights to {clean_query}",
-        "outbound_date": "2026-07-15",
-        "return_date": "2026-07-22",
+        "departure_id": departure_airport.upper().strip(),
+        "arrival_id": arrival_airport.upper().strip(),
+        "outbound_date": outbound_date.strip(),
+        "return_date": return_date.strip(),
         "currency": "INR",
         "gl": "in",
         "hl": "en",
-        "api_key": api_key
+        "api_key": st.secrets["SERPAPI_KEY"]
     }
     
     try:
         response = requests.get("https://serpapi.com/search", params=params).json()
-        
-        # Pull best structural offers first
         best_flights = response.get("best_flights", [])
         if not best_flights:
             best_flights = response.get("other_flights", [])
             
         if not best_flights:
-            return ddg_search_fallback(f"current live flight schedules ticket pricing options fares for {query} 2026")
+            return ddg_search_fallback(f"live flight schedules connections from {departure_airport} to {arrival_airport} dates {outbound_date} 2026")
             
-        summary = f"### ✈️ Live Flight Routes & Pricing Matrix for {clean_query}\n"
-        summary += "**Travel Schedule:** 15th July 2026 ➡️ 22nd July 2026\n\n"
+        summary = f"### ✈️ Live Flight Routes & Pricing Matrix ({departure_airport} ➡️ {arrival_airport})\n"
+        summary += f"**Schedule Block:** {outbound_date} to {return_date}\n\n"
         for i, flight in enumerate(best_flights[:3]):
             price = flight.get("price", "Dynamic Fare")
             airline = flight["flights"][0]["airline"]
             duration = flight.get("total_duration", "N/A")
-            summary += f"{i+1}️. **{airline}**\n   * 💵 **Fare:** ₹{price:,} INR\n   * ⏱️ **Duration:** {duration} mins | Status: 🟢 Seat Inventory Verified\n\n"
+            summary += f"{i+1}️. **{airline}**\n   * 💵 **Fare:** ₹{price:,} INR\n   * ⏱️ **Duration:** {duration} mins | Status: 🟢 Inventory Open\n\n"
         return summary
     except Exception:
-        return ddg_search_fallback(f"live flight connections ticket pricing routes for {clean_query} 2026")
+        return ddg_search_fallback(f"flight pricing routes from {departure_airport} to {arrival_airport} around {outbound_date}")
 
 
-@tool
-def search_hotels(query: str) -> str:
+@tool(args_schema=HotelSearchSchema)
+def search_hotels(destination_city: str, check_in_date: str, check_out_date: str) -> str:
     """
     Queries live Google Hotels via SerpAPI for authentic available properties and current nightly rates worldwide.
     """
-    local_doc = run_pdf_rag_search(query)
+    local_doc = run_pdf_rag_search(f"Hotels and stays inside {destination_city}")
     if local_doc.strip():
         return local_doc
         
-    if "SERPAPI_KEY" not in st.secrets:
-        return "Missing SERPAPI_KEY configuration token."
-        
-    api_key = st.secrets["SERPAPI_KEY"]
-    clean_location = query.lower().replace("find hotels in", "").replace("hotels in", "").replace("hotel in", "").replace("stay in", "").strip().title()
-
-    # Dynamic Parameter Mapping for SerpAPI Google Hotels Engine
-    params = {
-        "engine": "google_hotels",
-        "q": f"Hotels in {clean_location}",
-        "check_in_date": "2026-07-15",
-        "check_out_date": "2026-07-18",
-        "currency": "INR",
-        "gl": "in",
-        "hl": "en",
-        "api_key": api_key
-    }
-    
-    try:
-        response = requests.get("https://serpapi.com/search", params=params).json()
-        properties = response.get("properties", [])
-        
-        if not properties:
-            return ddg_search_fallback(f"best verified accommodations hotel choices stay rates in {clean_location} 2026")
-            
-        summary = f"### 🏨 Live Verified Accommodations inside {clean_location}\n"
-        summary += "**Stay Window:** 15th July 2026 to 18th July 2026\n\n"
-        for i, hotel in enumerate(properties[:3]):
-            name = hotel.get("name", "Premium Stay Location")
-            rating = hotel.get("rating", "4.0")
-            price = hotel.get("rate_per_night", {}).get("lowest", "Contact for pricing")
-            link = hotel.get("link", "#")
-            summary += f"{i+1}️. **[{name}]({link})**\n   * ⭐ **User Rating:** {rating}/5\n   * 💵 **Est. Nightly Rate:** {price} INR | Status: 🟢 Available\n\n"
-        return summary
-    except Exception:
-        return ddg_search_fallback(f"available hotels stay accommodations pricing in {clean_location} 2026")
-
-
-@tool
-def get_weather(query: str) -> str:
-    """
-    Fetches genuine real-time current temperatures and regional forecast metrics globally.
-    """
-    fillers = ["weather in", "weather for", "weather", "temperature in", "temperature", "current", "show me", "check"]
-    cleaned_query = query.lower()
-    for word in fillers:
-        cleaned_query = cleaned_query.replace(word, "")
-    
-    city_name = cleaned_query.strip().title()
-    if not city_name:
-        city_name = query.strip()
-
-    if "WEATHER_API_KEY" in st.secrets and st.secrets["WEATHER_API_KEY"].strip():
-        url = f"https://api.weatherapi.com/v1/current.json?key={st.secrets['WEATHER_API_KEY']}&q={city_name}&aqi=no"
-        try:
-            response = requests.get(url).json()
-            if "error" not in response:
-                location = response["location"]["name"]
-                country = response["location"]["country"]
-                temp_c = response["current"]["temp_c"]
-                condition = response["current"]["condition"]["text"]
-                humidity = response["current"]["humidity"]
-                return f"### 🌤️ Live Weather Report for {location}, {country}\n* **Current Temperature:** {temp_c}°C\n* **Atmospheric Condition:** {condition}\n* **Humidity Levels:** {humidity}%"
-        except Exception:
-            pass
-
-    search_query = f"current exact temperature conditions degrees celsius in {city_name} today"
-    return ddg_search_fallback(search_query)
-
-
-@tool
-def plan_itinerary(query: str) -> str:
-    """
-    Assembles customized, highly scannable day-by-day sightseeing timelines, tracking nearby attractions globally.
-    """
-    local_doc = run_pdf_rag_search(query)
-    if local_doc.strip():
-        return local_doc
-        
-    try:
-        return ddg_search_fallback(f"comprehensive day travel itinerary sightseeing landmarks path tourist spots near {query}")
-    except Exception as e:
-        return f"Itinerary construction error: {str(e)}"
+    if "SERPAPI_KEY" not in
