@@ -7,6 +7,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
 
+# --- FAULT-TOLERANT GLOBAL DATA CHANNEL SEARCH CONNECTOR ---
 try:
     from langchain_community.tools import DuckDuckGoSearchRun
     search_tool_instance = DuckDuckGoSearchRun()
@@ -52,12 +53,12 @@ class FlightSearchSchema(BaseModel):
     return_date: str = Field(description="The return date formatted strictly as YYYY-MM-DD.")
 
 class HotelSearchSchema(BaseModel):
-    destination_city: str = Field(description="The city name where the stay occurs (e.g., Mumbai, Singapore).")
+    destination_city: str = Field(description="The city name where the stay occurs (e.g., Mumbai, Singapore, Tiruvannamalai).")
     check_in_date: str = Field(description="The arrival check-in date formatted strictly as YYYY-MM-DD.")
     check_out_date: str = Field(description="The departure check-out date formatted strictly as YYYY-MM-DD.")
 
 class WeatherSchema(BaseModel):
-    target_city: str = Field(description="The explicit city name to fetch weather for (e.g., Karimnagar, London).")
+    target_city: str = Field(description="The explicit city name to fetch weather for (e.g., Karimnagar, London, Tiruvannamalai).")
 
 class ItinerarySchema(BaseModel):
     destination: str = Field(description="The target spot to plan sightseeing tracks around.")
