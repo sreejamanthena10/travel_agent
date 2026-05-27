@@ -215,16 +215,22 @@ if user_input := st.chat_input("Describe your ideal destination journey or askin
                 # Fetch final reply content accurately regardless of string complexity
                 raw_reply = str(agent_output["messages"][-1].content)
                 
-                # REGINA STRIPPER ENGINE: Detects and cuts off raw signature tokens or fallback dict tags instantly
-                if "signature" in raw_reply or "extras" in raw_reply or "{'type'" in raw_reply:
-                    clean_reply = re.split(r"extras|\{'type'|'signature'", raw_reply)[0].strip()
-                    clean_reply = clean_reply.rstrip("]}[',: ")
-                else:
-                    clean_reply = raw_reply
+                # --- NEW NON-DESTRUCTIVE CLEANUP ENGINE ---
+                # Checks if the signature block is appended at the very end of a true text answer
+                clean_reply = raw_reply
+                if "extras" in raw_reply:
+                    clean_reply = raw_reply.split("extras")[0].strip()
+                elif "signature" in raw_reply:
+                    clean_reply = raw_reply.split("signature")[0].strip()
                 
-                # Handle unexpected blank outputs safely
-                if not clean_reply.strip():
-                    clean_reply = "Results verified successfully! Please find your details below."
+                # Strip out any remaining structural markdown dictionary tags if present
+                clean_reply = re.sub(r"\[\s*\{\s*['\"]type['\"]\s*:\s*['\"]text['\"]\s*,\s*['\"]text['\"]\s*:\s*['\"]", "", clean_reply)
+                clean_reply = clean_reply.split("{'type'")[0].strip()
+                clean_reply = clean_reply.rstrip("]}[',: \n\r\"")
+                
+                # Safe Fallback: If the response is valid text but got cut down too aggressively, keep original
+                if not clean_reply.strip() or len(clean_reply) < 5:
+                    clean_reply = raw_reply
                 
                 response_placeholder.markdown(clean_reply)
                 st.session_state.messages.append({"role": "assistant", "content": clean_reply})
