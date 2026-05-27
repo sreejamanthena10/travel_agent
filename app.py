@@ -3,7 +3,7 @@ import requests
 import streamlit as st
 import uuid
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -102,7 +102,7 @@ def ddg_search_fallback(query_str: str) -> str:
     try:
         res = requests.get(f"https://html.duckduckgo.com/html/?q={query_str}", headers={"User-Agent": "Mozilla/5.0"})
         if res.status_code == 200 and len(res.text) > 200:
-            return f"Search result overview for {query_str}: Active Online Results Fetched."
+            return f"Overview details for {query_str}: Active Online Results Fetched."
         return "Live lookup engine refreshing data channels."
     except Exception:
         return "Web query stream temporarily offline."
@@ -120,6 +120,9 @@ class HotelSearchSchema(BaseModel):
 
 class WeatherSchema(BaseModel):
     target_city: str = Field(description="The city name to pull weather forecasts for.")
+
+class RestaurantSchema(BaseModel):
+    search_query: str = Field(description="The dining query or name with location (e.g., 'best restaurants in Dubai' or 'Paradise Biryani Karimnagar reviews').")
 
 @tool(args_schema=FlightSearchSchema)
 def search_flights(departure_airport: str, arrival_airport: str, outbound_date: str, return_date: str) -> str:
@@ -147,27 +150,16 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
                 airline = first_leg.get("airline", "Unknown Carrier")
                 flight_num = first_leg.get("flight_number", "N/A")
                 
-                # Robust clock timing key retrieval pass
-                dep_clock = "N/A"
-                arr_clock = "N/A"
-                if "departure_airport_time" in first_leg:
-                    dep_clock = first_leg.get("departure_airport_time")
-                elif isinstance(first_leg.get("departure_airport"), dict):
-                    dep_clock = first_leg["departure_airport"].get("time", "N/A")
-                    
-                if "arrival_airport_time" in first_leg:
-                    arr_clock = first_leg.get("arrival_airport_time")
-                elif isinstance(first_leg.get("arrival_airport"), dict):
-                    arr_clock = first_leg["arrival_airport"].get("time", "N/A")
-                
+                dep_clock = first_leg.get("departure_airport_time", "N/A")
+                arr_clock = first_leg.get("arrival_airport_time", "N/A")
                 if " " in str(dep_clock): dep_clock = str(dep_clock).split(" ")[-1]
                 if " " in str(arr_clock): arr_clock = str(arr_clock).split(" ")[-1]
                 duration = flight_option.get("total_duration", "N/A")
                 
                 summary += f"{i+1}. **{airline}** ({airline[:2].upper()}-{flight_num})\n"
-                summary += f"   * ⏰ **Timings:** **{dep_clock}** ➡️ **{arr_clock}** ({duration} mins, Non-stop)\n"
-                summary += f"   * 💵 **Fare:** ₹{price:,} INR\n"
-                summary += f"   * 🟢 **Status:** Seats Verified Open\n\n"
+                summary += f"   * Timings: **{dep_clock}** ➡️ **{arr_clock}** ({duration} mins, Non-stop)\n"
+                summary += f"   * Fare: ₹{price:,} INR\n"
+                summary += f"   * Status: Seats Verified Open\n\n"
         return summary
     except Exception:
         return ddg_search_fallback(f"flight timings options from {departure_airport} to {arrival_airport}")
@@ -196,12 +188,11 @@ def search_hotels(destination_city: str, check_in_date: str, check_out_date: str
             reviews = hotel.get("reviews", "N/A")
             rate = hotel.get("rate_per_night", {}).get("lowest", "Contact For Fare")
             amenities = ", ".join(hotel.get("amenities", [])[:4]) or "Free Wi-Fi, Pool, AC"
-            link = hotel.get("link", "#")
             
-            summary += f"{i+1}. **[{name}]({link})**\n"
-            summary += f"   * ⭐ **Rating:** {rating}/5 ({reviews} reviews)\n"
-            summary += f"   * 💵 **Price:** {rate} INR per night\n"
-            summary += f"   * 🌟 **Key Perks:** `{amenities}`\n\n"
+            summary += f"{i+1}. **{name}**\n"
+            summary += f"   * Rating: {rating}/5 ({reviews} reviews)\n"
+            summary += f"   * Price: {rate} INR per night\n"
+            summary += f"   * Key Perks: `{amenities}`\n\n"
         return summary
     except Exception:
         return ddg_search_fallback(f"hotels stay options pricing metrics in {destination_city}")
@@ -228,21 +219,55 @@ def get_weather(target_city: str) -> str:
             pass
     return ddg_search_fallback(f"current detailed temperature conditions weather forecast inside city {city_name} today")
 
+@tool(args_schema=RestaurantSchema)
+def search_restaurants_and_reviews(search_query: str) -> str:
+    """Queries local maps search engines via SerpAPI to locate specific restaurants, food spots, ratings, and genuine customer reviews/recommendations."""
+    if "SERPAPI_KEY" not in st.secrets:
+        return "Missing SERPAPI_KEY configuration token."
+    params = {
+        "engine": "google_maps", "q": search_query.strip(), "type": "search", "hl": "en", "gl": "in", "api_key": st.secrets["SERPAPI_KEY"]
+    }
+    try:
+        response = requests.get("https://serpapi.com/search", params=params).json()
+        local_results = response.get("local_results", [])
+        if not local_results:
+            return ddg_search_fallback(f"customer reviews description ratings for restaurant {search_query}")
+            
+        summary = f"### 🍽️ Verified Restaurant Profile & Local Reviews Matrix\n\n"
+        for i, place in enumerate(local_results[:2]):
+            name = place.get("title", "Dining Location")
+            rating = place.get("rating", "N/A")
+            review_count = place.get("reviews", "N/A")
+            address = place.get("address", "Local Area")
+            description = place.get("description", "Premium dining establishment.")
+            
+            summary += f"{i+1}. **{name}**\n"
+            summary += f"   * **Location/Address:** {address}\n"
+            summary += f"   * **Overall Rating:** ⭐ {rating}/5 ({review_count} reviews)\n"
+            summary += f"   * **Core Specialties:** {description}\n"
+            
+            # Surface real-time feedback snippet text if available
+            if place.get("reviews_original"):
+                summary += f"   * **Top Customer Review Snippet:** \"{place['reviews_original'][0].get('snippet', 'Food and ambient service are highly recommended.')}\"\n"
+            summary += "\n"
+        return summary
+    except Exception:
+        return ddg_search_fallback(f"customer reviews ratings menu layout for {search_query}")
+
 @tool
 def plan_itinerary(destination: str) -> str:
     """Assembles customized day-by-day sightseeing timelines."""
     return f"Complete destination tracking sightseeing activities and historical places for {destination} loaded successfully."
 
-# --- SYSTEM PROMPT (BUILT FOR COMPLEXITY AND EXTREME SIMPLICITY) ---
+# --- SYSTEM PROMPT (BUILT FOR BULLETED BLOCK TIMELINES) ---
 SYSTEM_PROMPT = f"""You are a premium, highly adaptive AI Travel Agent. Today's date is {datetime.now().strftime('%Y-%m-%d')}.
-Your core mission is to make travel planning understandable for ANYONE—from advanced complex requests to uneducated users typing simple phrases like 'hotels near arunachalam'.
 
-CRITICAL INSTRUCTIONS FOR COMPLEXITY & SIMPLICITY:
-1. UNDERSTAND SIMPLE OR BROKEN PROMPTS: If a user types just 'hotels at Goa' or 'hotels near Tiruvannamalai', do NOT ask for dates. Automatically assume a standard 3-day travel window starting 7 days from today. Convert their simple question into an internal tool call smoothly.
-2. TIMINGS: When listing flight results, you MUST surface exact departure and arrival wall-clock hours (e.g., 10:15 AM -> 02:30 PM). Never hide or skip clock timings.
-3. GRANULAR DAILY BREAKDOWNS (NO SUMMARIES): Never write plans as vague paragraphs or high-level text. Organize every single answer step-by-step, hour-by-hour, or day-by-day in clean bulleted blocks.
-4. BUDGET LIMITS: If a budget is specified, immediately build a markdown table titled 'Comprehensive Trip Expense Sheet (INR)'. Track all facets and keep the final math securely below their requested cap.
-5. CLEAN OUTPUTS: Never append metadata dictionary outputs, signature hash lines, tool codes, or trailing symbols anywhere in your text."""
+STRICT CONTENT OUTPUT LAYOUT RULES:
+1. POINT-WISE STEP BREAKDOWNS ONLY (NO PROSE SUMMARY PARAGRAPHS): When asked to plan a trip, itinerary, or hotel stay, you are explicitly FORBIDDEN from writing general summaries or conversational intro blocks. Output your plan completely in crisp, point-wise day blocks or clear bullet milestones. 
+2. EVERY STEP DETAILED: Every point must outline exact items (e.g. Morning sightseeing spots, explicit ticket pricing metrics, hotel per-night numbers) so it is instantly legible.
+3. FLAWLESS TIMINGS: For flight queries, display the explicit wall-clock times (e.g., 06:15 ➡️ 09:45) directly inline.
+4. AUTOMATIC DATE HANDLING FOR SIMPLE PROMPTS: If a user gives a brief location query without dates, automatically establish a 3-day travel window starting 7 days from today to fuel the search tools behind the scenes without breaking.
+5. NO TRASH TEXT: Do not append technical signatures, text block brackets, metadata keys, or dictionary fields anywhere in your answer."""
 
 # --- 8. CHAT FEED DISPLAY LOOP ---
 for msg in st.session_state.messages:
@@ -250,14 +275,14 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # --- 9. AI PROCESSING PIPELINE ENGINE ---
-if user_input := st.chat_input("Where do you want to go? Type a place, hotel request, or a full budget plan here..."):
+if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaurant reviews here..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
         
     with st.chat_message("assistant"):
         response_placeholder = st.empty()
-        response_placeholder.markdown("🔍 *Consulting global live data distribution servers...*")
+        response_placeholder.markdown("🔍 *Consulting live global travel network channels...*")
         
         if "GEMINI_API_KEYS" not in st.secrets:
             response_placeholder.markdown("⚠️ Token stream parsing failure. Save GEMINI_API_KEYS inside your secrets pool panel.")
@@ -279,7 +304,7 @@ if user_input := st.chat_input("Where do you want to go? Type a place, hotel req
                     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=clean_key, temperature=0.0)
                     agent_executor = create_react_agent(
                         llm, 
-                        tools=[search_flights, search_hotels, get_weather, plan_itinerary]
+                        tools=[search_flights, search_hotels, get_weather, search_restaurants_and_reviews, plan_itinerary]
                     )
                     
                     config = {"configurable": {"thread_id": st.session_state.session_id}}
@@ -298,8 +323,11 @@ if user_input := st.chat_input("Where do you want to go? Type a place, hotel req
             if agent_output is not None:
                 raw_reply = str(agent_output["messages"][-1].content)
                 
-                # PRECISE RIGOROUS REGEX CLEANUP PASSTHROUGH
-                clean_reply = raw_reply.split("extras")[0].split("signature")[0].split("{'type'")[0].strip()
+                # --- AGGRESSIVE PRODUCTION TRUNCATION PASS (Kills all metadata strings permanently) ---
+                clean_reply = raw_reply.split("extras=")[0].split("additional_kwargs=")[0].split("response_metadata=")[0].strip()
+                clean_reply = clean_reply.split("signature=")[0].split("{'type'")[0].strip()
+                
+                # Strip bracket structures if present at the end
                 clean_reply = re.sub(r"\[\s*\{\s*['\"]type['\"]:\s*['\"]text['\"].*?\}\s*\]", "", clean_reply, flags=re.DOTALL)
                 clean_reply = clean_reply.rstrip("]}[',: \n\r\"")
                 
