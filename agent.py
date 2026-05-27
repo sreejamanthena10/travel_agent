@@ -44,22 +44,30 @@ def get_agent():
     if not keys_pool:
         return None
 
-    for current_key in keys_pool:
-        try:
-            genai.configure(api_key=current_key)
-            llm = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash",
-                google_api_key=current_key,
-                temperature=0.2
-            )
-            
-            tools_list = [search_flights, search_hotels, get_weather, plan_itinerary]
-            compiled_agent = create_react_agent(llm, tools=tools_list)
-            
-            # Key status heartbeat test
-            test_response = llm.invoke("Ping")
-            if test_response and test_response.content:
-                return compiled_agent
-        except Exception:
-            continue
+    # Use the first available key immediately for maximum performance speed (< 2 seconds)
+    primary_key = keys_pool[0]
+    try:
+        genai.configure(api_key=primary_key)
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            google_api_key=primary_key,
+            temperature=0.2
+        )
+        
+        tools_list = [search_flights, search_hotels, get_weather, plan_itinerary]
+        return create_react_agent(llm, tools=tools_list)
+    except Exception:
+        # Fallback to secondary keys if the absolute primary configuration throws a initialization fault
+        for alternate_key in keys_pool[1:]:
+            try:
+                genai.configure(api_key=alternate_key)
+                llm = ChatGoogleGenerativeAI(
+                    model="gemini-2.5-flash",
+                    google_api_key=alternate_key,
+                    temperature=0.2
+                )
+                tools_list = [search_flights, search_hotels, get_weather, plan_itinerary]
+                return create_react_agent(llm, tools=tools_list)
+            except Exception:
+                continue
     return None
