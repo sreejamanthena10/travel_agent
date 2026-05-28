@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.prebuilt import create_react_agent
-from langgraph.checkpoint.memory import MemorySaver  # <--- Added for persistent bot memory
+from langgraph.checkpoint.memory import MemorySaver
 
 # --- 1. SYSTEM PAGE CONFIGURATIONS ---
 st.set_page_config(page_title="Free AI Travel Agent", page_icon="✈️", layout="wide")
@@ -25,7 +25,7 @@ if "theme" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 
-# --- Added memory instance to persist across app reruns ---
+# Persistent checkpointer instance to preserve multi-turn bot conversations
 if "agent_memory" not in st.session_state:
     st.session_state.agent_memory = MemorySaver()
 
@@ -137,7 +137,7 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
         return "Missing SERPAPI_KEY configuration token."
     time.sleep(1.0)
     
-    # Simple prompt handler: dynamic dates calculation if fields pass blank values
+    # Clean parameter fallback for simple conversational queries
     if not outbound_date:
         outbound_date = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
     if not return_date:
@@ -283,7 +283,7 @@ def plan_itinerary(destination: str) -> str:
     """Assembles customized day-by-day sightseeing timelines."""
     return f"Complete destination tracking sightseeing activities and historical places for {destination} loaded successfully."
 
-# --- SYSTEM PROMPT (BUILT FOR BULLETED BLOCK TIMELINES) ---
+# --- SYSTEM PROMPT (BUILT FOR BULLETED BLOCK TIMELINES & COMPLEX AGENT ROUTING) ---
 SYSTEM_PROMPT = f"""You are a premium, highly adaptive AI Travel Agent. Today's date is {datetime.now().strftime('%Y-%m-%d')}.
 
 STRICT CONTENT OUTPUT LAYOUT RULES:
@@ -327,7 +327,7 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
                 try:
                     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=clean_key, temperature=0.0)
                     
-                    # CONFIG UPDATE: Connected persistent checkpointer memory saver state to make it remember past queries
+                    # Attached the persistent checkpointer memory saver safely to handle multi-turn history natively
                     agent_executor = create_react_agent(
                         llm, 
                         tools=[search_flights, search_hotels, get_weather, search_restaurants_and_reviews, plan_itinerary],
@@ -354,7 +354,7 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
                 clean_reply = raw_reply.split("extras=")[0].split("additional_kwargs=")[0].split("response_metadata=")[0].strip()
                 clean_reply = clean_reply.split("signature=")[0].split("{'type'")[0].strip()
                 
-                # Strip bracket structures if present at the end
+                # Strip bracket structures cleanly if present at the end of token streams
                 clean_reply = re.sub(r"\[\s*\{\s*['\"]type['\"]:\s*['\"]text['\"].*?\}\s*\]", "", clean_reply, flags=re.DOTALL)
                 clean_reply = clean_reply.rstrip("]}[',: \n\r\"")
                 
