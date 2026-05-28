@@ -29,7 +29,7 @@ if "session_id" not in st.session_state:
 if "agent_memory" not in st.session_state:
     st.session_state.agent_memory = MemorySaver()
 
-# --- 3. HEADER THEME CONTROLLER (Clean Toggle Without ON/OFF Text) ---
+# --- 3. HEADER THEME CONTROLLER (Native Fallback Synchronization) ---
 col_space, col_toggle = st.columns([8, 2])
 with col_toggle:
     is_dark = st.toggle("🌙 Dark Mode", value=(st.session_state.theme == "dark"))
@@ -38,51 +38,49 @@ with col_toggle:
         st.session_state.theme = new_theme
         st.rerun()
 
-# --- 4. DYNAMIC THEME-INDEPENDENT CSS ENGINE ---
-if st.session_state.theme == "dark":
-    BG_STYLE = "radial-gradient(circle at 50% 50%, #1e1b4b 0%, #111827 100%)"
-    TXT_MAIN = "#ffffff"
-    TXT_MUTED = "#94a3b8"
-    TXT_ORANGE = "#ff7a33"
-    CARD_1_BG = "#2e2a14"       
-    CARD_2_BG = "#1e293b"       
-    CARD_3_BG = "#1e3a8a"       
-    CARD_4_BG = "#1f2937"       
-    CARD_BORDER = "#374151"
-    FORCE_FONT = "#ffffff"
-else:
-    BG_STYLE = "radial-gradient(circle at 50% 50%, #fee2e2 0%, #fae8ff 35%, #f5f3ff 65%, #e0f2fe 100%)"
-    TXT_MAIN = "#1e293b"
-    TXT_MUTED = "#64748b"
-    TXT_ORANGE = "#ea580c"      
-    CARD_1_BG = "#fef08a"       
-    CARD_2_BG = "#dbeafe"       
-    CARD_3_BG = "#bfdbfe"       
-    CARD_4_BG = "#ffffff"       
-    CARD_BORDER = "#e2e8f0"
-    FORCE_FONT = "#1e293b"
-
-CSS_SHEET = f"""
+# --- 4. DYNAMIC THEME-INDEPENDENT NATIVE CSS ENGINE ---
+# Uses Streamlit native CSS variables to remain completely independent of custom string switching
+CSS_SHEET = """
 <style>
-    .stApp {{ background: {BG_STYLE} !important; color: {TXT_MAIN} !important; }}
-    .hero-container {{ text-align: center; padding: 1.5rem 0; }}
-    .hero-title {{ font-size: 2.8rem; font-weight: 800; color: {TXT_ORANGE} !important; margin-bottom: 0.5rem; }}
-    .hero-subtitle {{ font-size: 1.2rem; font-weight: 500; color: {TXT_MUTED} !important; margin-bottom: 0.5rem; }}
-    .hero-small {{ font-size: 0.95rem; color: {TXT_MUTED} !important; margin-bottom: 2rem; }}
-    .ui-card {{ border: 1px solid {CARD_BORDER}; border-radius: 16px; padding: 1.8rem; min-height: 220px; display: flex; flex-direction: column; justify-content: space-between; }}
-    .card-title {{ font-size: 1.5rem; font-weight: 700; color: {TXT_MAIN} !important; margin-bottom: 0.8rem; }}
-    .card-desc {{ font-size: 0.95rem; color: {TXT_MUTED} !important; line-height: 1.5; }}
-    .card-icon {{ font-size: 2.2rem; text-align: right; margin-top: auto; }}
+    /* Global Background Blend targeting system variables directly */
+    .stApp {
+        background: radial-gradient(circle at 50% 50%, var(--background-color) 0%, rgba(120,110,250,0.05) 100%) !important;
+    }
+    
+    .hero-container { text-align: center; padding: 1.5rem 0; }
+    .hero-title { font-size: 2.8rem; font-weight: 800; color: #ea580c !important; margin-bottom: 0.5rem; }
+    .hero-subtitle { font-size: 1.2rem; font-weight: 500; color: var(--text-color) !important; opacity: 0.85; margin-bottom: 0.5rem; }
+    .hero-small { font-size: 0.95rem; color: var(--text-color) !important; opacity: 0.6; margin-bottom: 2rem; }
+    
+    /* Transparent Adaptive Glass Cards */
+    .ui-card { 
+        border: 1px solid rgba(128, 128, 128, 0.2); 
+        border-radius: 16px; 
+        padding: 1.8rem; 
+        min-height: 220px; 
+        display: flex; 
+        flex-direction: column; 
+        justify-content: space-between;
+        background-color: rgba(128, 128, 128, 0.06);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .card-title { font-size: 1.5rem; font-weight: 700; color: var(--text-color) !important; margin-bottom: 0.8rem; }
+    .card-desc { font-size: 0.95rem; color: var(--text-color) !important; opacity: 0.75; line-height: 1.5; }
+    .card-icon { font-size: 2.2rem; text-align: right; margin-top: auto; }
+    
+    /* Enforced Text Alignment for Tables and Content Channels */
     .stChatMessage, .stChatMessage p, .stChatMessage div, .stChatMessage span,
-    div[data-testid="stMarkdownContainer"] p, td, th, table, tr, li, ul, ol {{ color: {FORCE_FONT} !important; }}
-    table {{ background-color: {CARD_4_BG} !important; border: 1px solid {CARD_BORDER} !important; width: 100%; }}
-    th, td {{ border: 1px solid {CARD_BORDER} !important; padding: 10px; }}
+    div[data-testid="stMarkdownContainer"] p, td, th, table, tr, li, ul, ol { 
+        color: var(--text-color) !important; 
+    }
+    table { background-color: rgba(128, 128, 128, 0.03) !important; border: 1px solid rgba(128, 128, 128, 0.2) !important; width: 100%; }
+    th, td { border: 1px solid rgba(128, 128, 128, 0.2) !important; padding: 10px; }
 </style>
 """
 st.markdown(CSS_SHEET, unsafe_allow_html=True)
 
 # --- 5. MAIN HERO TEXT SECTION ---
-st.markdown(f"""
+st.markdown("""
 <div class="hero-container">
     <div class="hero-title">Begin Your Next Adventure 🎈</div>
     <div class="hero-subtitle">Hi! I'm your AI Trip Partner, here to make trip planning easy. Share your travel details, and I'll make your ideal plan! Happy Travels! ✈️</div>
@@ -93,15 +91,15 @@ st.markdown(f"""
 # --- 6. FOUR CUSTOM CARDS LAYOUT ---
 c1, c2, c3, c4 = st.columns(4)
 with c1:
-    st.markdown(f'<div class="ui-card" style="background-color: {CARD_1_BG};"><div><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences and days.</div></div><div class="card-icon">📍</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="ui-card"><div class="card-wrapper"><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences and days.</div></div><div class="card-icon">📍</div></div>', unsafe_allow_html=True)
 with c2:
-    st.markdown(f'<div class="ui-card" style="background-color: {CARD_2_BG};"><div><div class="card-title">Find Flights</div><div class="card-desc">Smart deals tracked across multiple global sources.</div></div><div class="card-icon">📅</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="ui-card"><div class="card-wrapper"><div class="card-title">Find Flights</div><div class="card-desc">Smart deals tracked across multiple global sources.</div></div><div class="card-icon">📅</div></div>', unsafe_allow_html=True)
 with c3:
-    st.markdown(f'<div class="ui-card" style="background-color: {CARD_3_BG};"><div><div class="card-title">Find Hotels</div><div class="card-desc">Perfect accommodation metrics matched to your needs.</div></div><div class="card-icon">🏨</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="ui-card"><div class="card-wrapper"><div class="card-title">Find Hotels</div><div class="card-desc">Perfect accommodation metrics matched to your needs.</div></div><div class="card-icon">🏨</div></div>', unsafe_allow_html=True)
 with c4:
-    st.markdown(f'<div class="ui-card" style="background-color: {CARD_4_BG};"><div><div class="card-title">Not sure?</div><div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div></div><div class="card-icon">🔮</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="ui-card"><div class="card-wrapper"><div class="card-title">Not sure?</div><div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div></div><div class="card-icon">🔮</div></div>', unsafe_allow_html=True)
 
-st.markdown("<br><hr style='border-top: 1px solid var(--stBorderColor);'><br>", unsafe_allow_html=True)
+st.markdown("<br><hr style='border-top: 1px solid rgba(128,128,128,0.2);'><br>", unsafe_allow_html=True)
 
 # --- 7. GLOBAL TRAVEL DATA TOOLS ---
 def ddg_search_fallback(query_str: str) -> str:
@@ -137,7 +135,6 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
         return "Missing SERPAPI_KEY configuration token."
     time.sleep(1.0)
     
-    # Clean parameter fallback for simple conversational queries
     if not outbound_date:
         outbound_date = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
     if not return_date:
@@ -283,14 +280,14 @@ def plan_itinerary(destination: str) -> str:
     """Assembles customized day-by-day sightseeing timelines."""
     return f"Complete destination tracking sightseeing activities and historical places for {destination} loaded successfully."
 
-# --- SYSTEM PROMPT (BUILT FOR BULLETED BLOCK TIMELINES & COMPLEX AGENT ROUTING) ---
+# --- SYSTEM PROMPT ---
 SYSTEM_PROMPT = f"""You are a premium, highly adaptive AI Travel Agent. Today's date is {datetime.now().strftime('%Y-%m-%d')}.
 
 STRICT CONTENT OUTPUT LAYOUT RULES:
-1. POINT-WISE STEP BREAKDOWNS ONLY (NO PROSE SUMMARY PARAGRAPHS): When asked to plan a trip, itinerary, or hotel stay, you are explicitly FORBIDDEN from writing general summaries or conversational intro blocks. Output your plan completely in crisp, point-wise day blocks or clear bullet milestones. 
-2. EVERY STEP DETAILED: Every point must outline exact items (e.g. Morning sightseeing spots, explicit ticket pricing metrics, hotel per-night numbers) so it is instantly legible.
+1. POINT-WISE STEP BREAKDOWNS ONLY (NO PROSE SUMMARY PARAGRAPHS): Output your plan completely in crisp, point-wise day blocks or clear bullet milestones. 
+2. EVERY STEP DETAILED: Every point must outline exact items so it is instantly legible.
 3. FLAWLESS TIMINGS: For flight queries, display the explicit wall-clock times (e.g., 06:15 ➡️ 09:45) directly inline.
-4. AUTOMATIC DATE HANDLING FOR SIMPLE PROMPTS: If a user gives a brief location query without dates, automatically establish a 3-day travel window starting 7 days from today to fuel the search tools behind the scenes without breaking.
+4. AUTOMATIC DATE HANDLING FOR SIMPLE PROMPTS: Automatically establish a 3-day travel window starting 7 days from today to fuel the search tools behind the scenes if dates are missing.
 5. NO TRASH TEXT: Do not append technical signatures, text block brackets, metadata keys, or dictionary fields anywhere in your answer."""
 
 # --- 8. CHAT FEED DISPLAY LOOP ---
@@ -327,7 +324,6 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
                 try:
                     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=clean_key, temperature=0.0)
                     
-                    # Attached the persistent checkpointer memory saver safely to handle multi-turn history natively
                     agent_executor = create_react_agent(
                         llm, 
                         tools=[search_flights, search_hotels, get_weather, search_restaurants_and_reviews, plan_itinerary],
@@ -350,11 +346,10 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
             if agent_output is not None:
                 raw_reply = str(agent_output["messages"][-1].content)
                 
-                # --- AGGRESSIVE PRODUCTION TRUNCATION PASS (Kills all metadata strings permanently) ---
+                # --- AGGRESSIVE PRODUCTION TRUNCATION PASS ---
                 clean_reply = raw_reply.split("extras=")[0].split("additional_kwargs=")[0].split("response_metadata=")[0].strip()
                 clean_reply = clean_reply.split("signature=")[0].split("{'type'")[0].strip()
                 
-                # Strip bracket structures cleanly if present at the end of token streams
                 clean_reply = re.sub(r"\[\s*\{\s*['\"]type['\"]:\s*['\"]text['\"].*?\}\s*\]", "", clean_reply, flags=re.DOTALL)
                 clean_reply = clean_reply.rstrip("]}[',: \n\r\"")
                 
