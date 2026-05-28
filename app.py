@@ -3,6 +3,7 @@ import requests
 import streamlit as st
 import uuid
 import re
+import time
 from datetime import datetime
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
@@ -129,6 +130,7 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
     """Queries live Google Flights via SerpAPI for real-time ticket choices, exact pricing, explicit clock timings, and carrier routes globally."""
     if "SERPAPI_KEY" not in st.secrets:
         return "Missing SERPAPI_KEY configuration token."
+    time.sleep(1.0)
     params = {
         "engine": "google_flights", "departure_id": departure_airport.upper().strip(),
         "arrival_id": arrival_airport.upper().strip(), "outbound_date": outbound_date.strip(),
@@ -169,6 +171,7 @@ def search_hotels(destination_city: str, check_in_date: str, check_out_date: str
     """Queries live Google Hotels via SerpAPI for authentic available properties, nightly breakdown rates, and amenities in a location."""
     if "SERPAPI_KEY" not in st.secrets:
         return "Missing SERPAPI_KEY configuration token."
+    time.sleep(1.0)
     params = {
         "engine": "google_hotels", "q": f"Hotels in {destination_city.strip().title()}",
         "check_in_date": check_in_date.strip(), "check_out_date": check_out_date.strip(),
@@ -201,6 +204,7 @@ def search_hotels(destination_city: str, check_in_date: str, check_out_date: str
 def get_weather(target_city: str) -> str:
     """Fetches genuine real-time current temperatures and structured multi-day forecast blocks globally."""
     city_name = target_city.strip().title()
+    time.sleep(1.0)
     if "WEATHER_API_KEY" in st.secrets and st.secrets["WEATHER_API_KEY"].strip():
         url = f"https://api.weatherapi.com/v1/forecast.json?key={st.secrets['WEATHER_API_KEY']}&q={city_name}&days=3&aqi=no"
         try:
@@ -224,6 +228,7 @@ def search_restaurants_and_reviews(search_query: str) -> str:
     """Queries local maps search engines via SerpAPI to locate specific restaurants, food spots, ratings, and genuine customer reviews/recommendations."""
     if "SERPAPI_KEY" not in st.secrets:
         return "Missing SERPAPI_KEY configuration token."
+    time.sleep(1.0)
     params = {
         "engine": "google_maps", "q": search_query.strip(), "type": "search", "hl": "en", "gl": "in", "api_key": st.secrets["SERPAPI_KEY"]
     }
@@ -246,7 +251,6 @@ def search_restaurants_and_reviews(search_query: str) -> str:
             summary += f"   * **Overall Rating:** ⭐ {rating}/5 ({review_count} reviews)\n"
             summary += f"   * **Core Specialties:** {description}\n"
             
-            # Surface real-time feedback snippet text if available
             if place.get("reviews_original"):
                 summary += f"   * **Top Customer Review Snippet:** \"{place['reviews_original'][0].get('snippet', 'Food and ambient service are highly recommended.')}\"\n"
             summary += "\n"
@@ -301,7 +305,8 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
             for active_key in keys_list:
                 clean_key = active_key.replace("[", "").replace("]", "").replace('"', '').replace("'", "").strip()
                 try:
-                    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=clean_key, temperature=0.0)
+                    # CONFIG UPDATE: Switched to gemini-2.5-flash-lite to handle high daily traffic free tiers
+                    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=clean_key, temperature=0.0)
                     agent_executor = create_react_agent(
                         llm, 
                         tools=[search_flights, search_hotels, get_weather, search_restaurants_and_reviews, plan_itinerary]
