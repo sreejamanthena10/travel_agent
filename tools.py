@@ -28,27 +28,36 @@ if "session_id" not in st.session_state:
 if "agent_memory" not in st.session_state:
     st.session_state.agent_memory = MemorySaver()
 
-# --- 3. AGGRESSIVE LIGHT MODE ENFORCER CSS ENGINE ---
-# This forces light values onto every layer to block browser-level dark overwrites
+# --- 3. BROWSER-PROOF OVERRIDE CSS ENGINE ---
+# Uses a full-screen filter matrix layer to override browser-forced dark modes
 CSS_SHEET = """
 <style>
-    /* Target every possible wrapper layer to break browser dark mode overrides */
-    html, body, .stApp, div[data-testid="stAppViewContainer"], div[data-testid="stApp"], .main, .block-container {
-        background: radial-gradient(circle at 50% 50%, #fee2e2 0%, #fae8ff 35%, #f5f3ff 65%, #e0f2fe 100%) !important;
-        background-color: #f5f3ff !important;
-        color: #1e293b !important;
+    /* Full-viewport overlay to invert forced dark filters back to light mode */
+    html {
+        filter: invert(1) hue-rotate(180deg) !important;
+    }
+    
+    /* Re-invert media assets so emojis and icons don't look strange */
+    img, .card-icon, svg {
+        filter: invert(1) hue-rotate(180deg) !important;
+    }
+
+    /* Core Application container structural setup */
+    .stApp, div[data-testid="stAppViewContainer"] {
+        background: radial-gradient(circle at 50% 50%, #011d1d 0%, #051700 35%, #0a0c00 65%, #1f0d01 100%) !important;
+        background-color: #0a0c00 !important;
     }
     
     .hero-container { text-align: center; padding: 1.5rem 0; }
-    .hero-title { font-size: 2.8rem; font-weight: 800; color: #ea580c !important; margin-bottom: 0.5rem; }
-    .hero-subtitle { font-size: 1.2rem; font-weight: 500; color: #1e293b !important; margin-bottom: 0.5rem; }
-    .hero-small { font-size: 0.95rem; color: #64748b !important; margin-bottom: 2rem; }
+    .hero-title { font-size: 2.8rem; font-weight: 800; color: #15a7f3 !important; margin-bottom: 0.5rem; }
+    .hero-subtitle { font-size: 1.2rem; font-weight: 500; color: #e1d6c4 !important; margin-bottom: 0.5rem; }
+    .hero-small { font-size: 0.95rem; color: #9b8b74 !important; margin-bottom: 2rem; }
     
-    /* Hardcoded Bright Pastel Profiles for Cards */
-    .card-1 { background-color: #fef08a !important; border: 1px solid #fef08a !important; }
-    .card-2 { background-color: #dbeafe !important; border: 1px solid #dbeafe !important; }
-    .card-3 { background-color: #bfdbfe !important; border: 1px solid #bfdbfe !important; }
-    .card-4 { background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; }
+    /* Color Profiles optimized for inversion mapping */
+    .card-1 { background-color: #010f75 !important; border: 1px solid #010f75 !important; }
+    .card-2 { background-color: #241501 !important; border: 1px solid #241501 !important; }
+    .card-3 { background-color: #402401 !important; border: 1px solid #402401 !important; }
+    .card-4 { background-color: #000000 !important; border: 1px solid #1d170f !important; }
     
     .ui-card { 
         border-radius: 16px !important; 
@@ -57,28 +66,18 @@ CSS_SHEET = """
         display: flex !important; 
         flex-direction: column !important; 
         justify-content: space-between !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        box-shadow: 0 4px 6px -1px rgba(255, 255, 255, 0.05) !important;
     }
-    .card-title { font-size: 1.5rem; font-weight: 700; color: #1e293b !important; margin-bottom: 0.8rem; }
-    .card-desc { font-size: 0.95rem; color: #64748b !important; line-height: 1.5; }
+    .card-title { font-size: 1.5rem; font-weight: 700; color: #e1d6c4 !important; margin-bottom: 0.8rem; }
+    .card-desc { font-size: 0.95rem; color: #9b8b74 !important; line-height: 1.5; }
     .card-icon { font-size: 2.2rem; text-align: right; margin-top: auto; }
     
-    /* Lock typography styling down permanently */
     p, span, div, label, h1, h2, h3, .stMarkdown, div[data-testid="stMarkdownContainer"] p {
-        color: #1e293b !important;
+        color: #e1d6c4 !important;
     }
     
-    /* Force chat messages to stay clean and bright light mode */
-    div[data-testid="stChatMessage"] {
-        background-color: rgba(255, 255, 255, 0.6) !important;
-        border: 1px solid rgba(128, 128, 128, 0.2) !important;
-        border-radius: 12px !important;
-        padding: 10px !important;
-        margin-bottom: 10px !important;
-    }
-    
-    table { background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; width: 100%; }
-    th, td { border: 1px solid #e2e8f0 !important; padding: 10px; color: #1e293b !important; }
+    table { background-color: #000000 !important; border: 1px solid #1d170f !important; width: 100%; }
+    th, td { border: 1px solid #1d170f !important; padding: 10px; color: #e1d6c4 !important; }
 </style>
 """
 st.markdown(CSS_SHEET, unsafe_allow_html=True)
@@ -99,7 +98,7 @@ with c2: st.markdown('<div class="ui-card card-2"><div><div class="card-title">F
 with c3: st.markdown('<div class="ui-card card-3"><div><div class="card-title">Find Hotels</div><div class="card-desc">Perfect accommodation metrics matched to your needs.</div></div><div class="card-icon">🏨</div></div>', unsafe_allow_html=True)
 with c4: st.markdown('<div class="ui-card card-4"><div><div class="card-title">Not sure?</div><div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div></div><div class="card-icon">🔮</div></div>', unsafe_allow_html=True)
 
-st.markdown("<br><hr style='border-top: 1px solid #e2e8f0;'><br>", unsafe_allow_html=True)
+st.markdown("<br><hr style='border-top: 1px solid #1d170f;'><br>", unsafe_allow_html=True)
 
 # --- 6. FAULT-TOLERANT GLOBAL DATA CHANNEL SEARCH CONNECTOR ---
 try:
@@ -140,7 +139,7 @@ def run_pdf_rag_search(query: str) -> str:
             return ""
     return ""
 
-# --- 7. REINFORCED SCHEMAS WITH SAFE DEFAULTS ---
+# --- 7. REINFORCED SCHEMAS WITH IMMUNE DEFAULTS ---
 class FlightSearchSchema(BaseModel):
     departure_airport: str = Field(default="HYD", description="The 3-letter airport code (e.g., HYD, BOM). Defaults to HYD.")
     arrival_airport: str = Field(default="GOI", description="The 3-letter destination code (e.g., BLR, DXB, GOI).")
@@ -294,66 +293,4 @@ STRICT CONTENT OUTPUT LAYOUT RULES:
 4. NO TRASH TEXT: Strip technical dictionary tracking blocks or trailing text wrappers completely."""
 
 # --- 8. CHAT FEED DISPLAY LOOP ---
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-# --- 9. AI PROCESSING PIPELINE ENGINE ---
-if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaurant reviews here..."):
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
-        st.markdown(user_input)
-        
-    with st.chat_message("assistant"):
-        response_placeholder = st.empty()
-        response_placeholder.markdown("🔍 *Consulting live global travel network channels...*")
-        
-        if "GEMINI_API_KEYS" not in st.secrets:
-            response_placeholder.markdown("⚠️ Missing GEMINI_API_KEYS inside your secrets panel.")
-        else:
-            raw_keys = st.secrets["GEMINI_API_KEYS"]
-            keys_list = [k.strip() for k in raw_keys.split(",")] if isinstance(raw_keys, str) else [str(k).strip() for k in raw_keys]
-                
-            agent_output = None
-            execution_error = None
-            
-            for active_key in keys_list:
-                clean_key = active_key.replace("[", "").replace("]", "").replace('"', '').replace("'", "").strip()
-                try:
-                    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=clean_key, temperature=0.0)
-                    
-                    agent_executor = create_react_agent(
-                        llm, 
-                        tools=[search_flights, search_hotels, get_weather, plan_itinerary],
-                        checkpointer=st.session_state.agent_memory
-                    )
-                    
-                    config = {"configurable": {"thread_id": st.session_state.session_id}}
-                    messages_payload = [
-                        SystemMessage(content=SYSTEM_PROMPT),
-                        HumanMessage(content=user_input)
-                    ]
-                    
-                    agent_output = agent_executor.invoke({"messages": messages_payload}, config=config)
-                    execution_error = None
-                    break
-                except Exception as e:
-                    execution_error = str(e)
-                    continue
-            
-            if agent_output is not None:
-                raw_reply = str(agent_output["messages"][-1].content)
-                
-                clean_reply = raw_reply.split("extras=")[0].split("additional_kwargs=")[0].split("response_metadata=")[0].strip()
-                clean_reply = clean_reply.split("signature=")[0].split("{'type'")[0].strip()
-                
-                if "text=" in clean_reply:
-                    clean_reply = clean_reply.split("text=")[-1].strip(" '\"[]{}")
-                    
-                clean_reply = clean_reply.strip("]}[',: \n\r\"")
-                if len(clean_reply) < 5: clean_reply = raw_reply
-                    
-                response_placeholder.markdown(clean_reply)
-                st.session_state.messages.append({"role": "assistant", "content": clean_reply})
-            else:
-                response_placeholder.markdown(f"❌ Connection Error: {execution_error}")
+for msg in st.session_state.messages
