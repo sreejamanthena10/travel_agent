@@ -4,12 +4,13 @@ import streamlit as st
 import uuid
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver  # <--- Added for persistent bot memory
 
 # --- 1. SYSTEM PAGE CONFIGURATIONS ---
 st.set_page_config(page_title="Free AI Travel Agent", page_icon="✈️", layout="wide")
@@ -23,6 +24,10 @@ if "theme" not in st.session_state:
 
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
+
+# --- Added memory instance to persist across app reruns ---
+if "agent_memory" not in st.session_state:
+    st.session_state.agent_memory = MemorySaver()
 
 # --- 3. HEADER THEME CONTROLLER (Clean Toggle Without ON/OFF Text) ---
 col_space, col_toggle = st.columns([8, 2])
@@ -109,15 +114,15 @@ def ddg_search_fallback(query_str: str) -> str:
         return "Web query stream temporarily offline."
 
 class FlightSearchSchema(BaseModel):
-    departure_airport: str = Field(description="The 3-letter airport code (e.g., HYD, BOM).")
+    departure_airport: str = Field(default="HYD", description="The 3-letter airport code (e.g., HYD, BOM). Defaults to HYD if missing.")
     arrival_airport: str = Field(description="The 3-letter destination code (e.g., DXB, MAA).")
-    outbound_date: str = Field(description="The departure date formatted strictly as YYYY-MM-DD.")
-    return_date: str = Field(description="The return date formatted strictly as YYYY-MM-DD.")
+    outbound_date: str = Field(default="", description="The departure date formatted strictly as YYYY-MM-DD.")
+    return_date: str = Field(default="", description="The return date formatted strictly as YYYY-MM-DD.")
 
 class HotelSearchSchema(BaseModel):
     destination_city: str = Field(description="The target location or city name (e.g., Dubai, Tiruvannamalai).")
-    check_in_date: str = Field(description="Check-in date formatted strictly as YYYY-MM-DD.")
-    check_out_date: str = Field(description="Check-out date formatted strictly as YYYY-MM-DD.")
+    check_in_date: str = Field(default="", description="Check-in date formatted strictly as YYYY-MM-DD.")
+    check_out_date: str = Field(default="", description="Check-out date formatted strictly as YYYY-MM-DD.")
 
 class WeatherSchema(BaseModel):
     target_city: str = Field(description="The city name to pull weather forecasts for.")
@@ -131,6 +136,15 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
     if "SERPAPI_KEY" not in st.secrets:
         return "Missing SERPAPI_KEY configuration token."
     time.sleep(1.0)
+    
+    # Simple prompt handler: dynamic dates calculation if fields pass blank values
+    if not outbound_date:
+        outbound_date = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
+    if not return_date:
+        return_date = (datetime.now() + timedelta(days=9)).strftime('%Y-%m-%d')
+    if not departure_airport or len(departure_airport.strip()) != 3:
+        departure_airport = "HYD"
+        
     params = {
         "engine": "google_flights", "departure_id": departure_airport.upper().strip(),
         "arrival_id": arrival_airport.upper().strip(), "outbound_date": outbound_date.strip(),
@@ -172,6 +186,12 @@ def search_hotels(destination_city: str, check_in_date: str, check_out_date: str
     if "SERPAPI_KEY" not in st.secrets:
         return "Missing SERPAPI_KEY configuration token."
     time.sleep(1.0)
+    
+    if not check_in_date:
+        check_in_date = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
+    if not check_out_date:
+        check_out_date = (datetime.now() + timedelta(days=9)).strftime('%Y-%m-%d')
+        
     params = {
         "engine": "google_hotels", "q": f"Hotels in {destination_city.strip().title()}",
         "check_in_date": check_in_date.strip(), "check_out_date": check_out_date.strip(),
@@ -305,11 +325,13 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
             for active_key in keys_list:
                 clean_key = active_key.replace("[", "").replace("]", "").replace('"', '').replace("'", "").strip()
                 try:
-                    # CONFIG UPDATE: Switched to gemini-2.5-flash-lite to handle high daily traffic free tiers
                     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=clean_key, temperature=0.0)
+                    
+                    # CONFIG UPDATE: Connected persistent checkpointer memory saver state to make it remember past queries
                     agent_executor = create_react_agent(
                         llm, 
-                        tools=[search_flights, search_hotels, get_weather, search_restaurants_and_reviews, plan_itinerary]
+                        tools=[search_flights, search_hotels, get_weather, search_restaurants_and_reviews, plan_itinerary],
+                        checkpointer=st.session_state.agent_memory
                     )
                     
                     config = {"configurable": {"thread_id": st.session_state.session_id}}
