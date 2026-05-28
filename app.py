@@ -28,7 +28,7 @@ if "session_id" not in st.session_state:
 if "agent_memory" not in st.session_state:
     st.session_state.agent_memory = MemorySaver()
 
-# --- 3. HEADER THEME CONTROLLER ---
+# --- 3. HEADER THEME CONTROLLER (Clean Toggle Without ON/OFF Text) ---
 col_space, col_toggle = st.columns([8, 2])
 with col_toggle:
     is_dark = st.toggle("🌙 Dark Mode", value=(st.session_state.theme == "dark"))
@@ -90,10 +90,10 @@ with c4: st.markdown('<div class="ui-card"><div><div class="card-title">Not sure
 
 st.markdown("<br><hr><br>", unsafe_allow_html=True)
 
-# --- 7. REINFORCED SCHEMAS WITH SAFE DEFAULTS TO PREVENT VALIDATION CRASHES ---
+# --- 7. GLOBAL TRAVEL DATA SCHEMAS ---
 class FlightSearchSchema(BaseModel):
     departure_airport: str = Field(default="HYD", description="3-letter airport code (e.g., HYD, BOM).")
-    arrival_airport: str = Field(default="GOI", description="3-letter destination code (e.g., DXB, MAA, GOI).")
+    arrival_airport: str = Field(default="GOI", description="3-letter destination code (e.g., DXB, GOI).")
     outbound_date: str = Field(default="", description="Departure date as YYYY-MM-DD.")
     return_date: str = Field(default="", description="Return date as YYYY-MM-DD.")
 
@@ -103,12 +103,11 @@ class HotelSearchSchema(BaseModel):
     check_out_date: str = Field(default="", description="Check-out date as YYYY-MM-DD.")
 
 class WeatherSchema(BaseModel):
-    target_city: str = Field(default="Goa", description="City name for the weather forecast.")
+    target_city: str = Field(default="Goa", description="City name for weather updates.")
 
 class RestaurantSchema(BaseModel):
-    search_query: str = Field(default="Restaurants", description="Dining query or name with location.")
+    search_query: str = Field(default="Restaurants", description="Dining query or place name.")
 
-# --- TRAVEL TOOLS CORE LOGIC ---
 def ddg_search_fallback(query_str: str) -> str:
     try:
         res = requests.get(f"https://html.duckduckgo.com/html/?q={query_str}", headers={"User-Agent": "Mozilla/5.0"})
@@ -120,10 +119,9 @@ def ddg_search_fallback(query_str: str) -> str:
 
 @tool(args_schema=FlightSearchSchema)
 def search_flights(departure_airport: str, arrival_airport: str, outbound_date: str, return_date: str) -> str:
-    """Queries live Google Flights via SerpAPI for pricing and wall-clock schedules."""
+    """Queries live Google Flights via SerpAPI."""
     if "SERPAPI_KEY" not in st.secrets: return "Missing SERPAPI_KEY."
     time.sleep(1.0)
-    
     if not outbound_date: outbound_date = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
     if not return_date: return_date = (datetime.now() + timedelta(days=9)).strftime('%Y-%m-%d')
     if not departure_airport: departure_airport = "HYD"
@@ -154,7 +152,7 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
 
 @tool(args_schema=HotelSearchSchema)
 def search_hotels(destination_city: str, check_in_date: str, check_out_date: str) -> str:
-    """Queries available hotel stays and nightly room metrics."""
+    """Queries available accommodations and current nightly rates."""
     if "SERPAPI_KEY" not in st.secrets: return "Missing SERPAPI_KEY."
     time.sleep(1.0)
     if not destination_city: destination_city = "Goa"
@@ -172,7 +170,7 @@ def search_hotels(destination_city: str, check_in_date: str, check_out_date: str
         if not properties: return ddg_search_fallback(f"accommodations in {destination_city}")
         
         summary = f"### 🏨 Top Lodging Options in {destination_city.title()}\n\n"
-        for i, hotel in enumerate(properties[:2]):
+        for hotel in properties[:2]:
             name = hotel.get("name", "Premium Hotel Stay")
             rate = hotel.get("rate_per_night", {}).get("lowest", "Dynamic Rate")
             summary += f"* **{name}** | 💵 Room Rate: {rate} INR per night\n"
@@ -182,7 +180,7 @@ def search_hotels(destination_city: str, check_in_date: str, check_out_date: str
 
 @tool(args_schema=WeatherSchema)
 def get_weather(target_city: str) -> str:
-    """Fetches real-time current temperatures and structured multi-day forecasts."""
+    """Fetches real-time current temperatures and forecasts."""
     if not target_city: target_city = "Goa"
     city_name = target_city.strip().title()
     time.sleep(1.0)
@@ -205,7 +203,7 @@ def get_weather(target_city: str) -> str:
 
 @tool(args_schema=RestaurantSchema)
 def search_restaurants_and_reviews(search_query: str) -> str:
-    """Locates dining spots and extracts live customer review matrix feedback snippets."""
+    """Locates food spots and extracts genuine customer reviews via SerpAPI."""
     if "SERPAPI_KEY" not in st.secrets: return "Missing SERPAPI_KEY."
     if not search_query: search_query = "Best restaurants"
     time.sleep(1.0)
@@ -228,17 +226,17 @@ def search_restaurants_and_reviews(search_query: str) -> str:
 
 @tool
 def plan_itinerary(destination: str) -> str:
-    """Generates day-by-day structural activity timelines for a given destination."""
+    """Generates day-by-day sightseeing timelines."""
     return f"Complete tracking data logs for sightseeing pathways inside {destination} compiled successfully."
 
 # --- SYSTEM PROMPT ---
 SYSTEM_PROMPT = f"""You are a premium AI Travel Agent. Today's date is {datetime.now().strftime('%Y-%m-%d')}.
-STRICT OUTPUT SCHEDULING INTERFACE RULES:
-1. POINT-WISE AND STEP-BY-STEP LAYOUTS ONLY: You are completely FORBIDDEN from writing summaries, introductory introductory blocks, or conversational paragraphs. Output every response as itemized bullets or line-by-line blocks.
-2. DETAILED BREAKDOWNS: Detail precise items (flight numbers, hotel fares, time metrics) cleanly.
-3. INLINE CLOCK TIMINGS: Always render exact arrival/departure clock hours inline directly.
-4. REMEMBER TRACE HISTORY: You operate as an active continuous conversational bot thread. Refer back to past details naturally.
-5. NO TECHNICAL RAW JUNK: Clear out raw metadata, system dictionary wrappers, brackets, or code strings completely before writing."""
+STRICT CONTENT OUTPUT LAYOUT RULES:
+1. POINT-WISE STEP BREAKDOWNS ONLY: Output your plan completely in crisp, point-wise day blocks or clear bullet milestones. No summary paragraphs.
+2. EVERY STEP DETAILED: Every point must outline exact flight info, hotel names, or pricing scales directly.
+3. INLINE CLOCK TIMINGS: For flight details, display the explicit wall-clock times (e.g., 06:15 -> 09:45) inline.
+4. PAST MEMORY SYNC: Maintain conversational reference history across turns.
+5. NO TRASH TEXT: Strip technical dictionary tracking blocks or trailing text wrappers completely."""
 
 # --- 8. CHAT FEED DISPLAY LOOP ---
 for msg in st.session_state.messages:
@@ -256,7 +254,7 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
         response_placeholder.markdown("🔍 *Consulting live global travel network channels...*")
         
         if "GEMINI_API_KEYS" not in st.secrets:
-            response_placeholder.markdown("⚠️ Missing GEMINI_API_KEYS variable tokens.")
+            response_placeholder.markdown("⚠️ Missing GEMINI_API_KEYS inside your secrets panel.")
         else:
             raw_keys = st.secrets["GEMINI_API_KEYS"]
             keys_list = [k.strip() for k in raw_keys.split(",")] if isinstance(raw_keys, str) else [str(k).strip() for k in raw_keys]
@@ -291,7 +289,9 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
             if agent_output is not None:
                 raw_reply = str(agent_output["messages"][-1].content)
                 
-                # Production Regex/Split Cleanup System
+                # --- SAFE AND UNIFIED STRING TRUNCATION PASS ---
                 clean_reply = raw_reply.split("extras=")[0].split("additional_kwargs=")[0].split("response_metadata=")[0].strip()
                 clean_reply = clean_reply.split("signature=")[0].split("{'type'")[0].strip()
-                clean_reply = re.sub(r"\[\s*\{\s*['\"]type['\"]:\s*['\"]text
+                
+                # Simplified, non-breaking cleaning pass to drop leftover list arrays
+                if
