@@ -28,31 +28,29 @@ if "session_id" not in st.session_state:
 if "agent_memory" not in st.session_state:
     st.session_state.agent_memory = MemorySaver()
 
-# --- 3. HARDCODED LIGHT PASTEL CSS ENGINE (System Theme-Immune Lock) ---
-BG_STYLE = "radial-gradient(circle at 50% 50%, #fee2e2 0%, #fae8ff 35%, #f5f3ff 65%, #e0f2fe 100%)"
-TXT_MAIN = "#1e293b"
-TXT_MUTED = "#64748b"
-TXT_ORANGE = "#ea580c"      
-FORCE_FONT = "#1e293b"
-
-CSS_SHEET = f"""
+# --- 3. AGGRESSIVE LIGHT MODE ENFORCER CSS ENGINE ---
+# This forces light values onto every layer to block browser-level dark overwrites
+CSS_SHEET = """
 <style>
-    .stApp, div[data-testid="stAppViewContainer"], div[data-testid="stApp"] {{ 
-        background: {BG_STYLE} !important; 
-        color: {TXT_MAIN} !important; 
-    }}
+    /* Target every possible wrapper layer to break browser dark mode overrides */
+    html, body, .stApp, div[data-testid="stAppViewContainer"], div[data-testid="stApp"], .main, .block-container {
+        background: radial-gradient(circle at 50% 50%, #fee2e2 0%, #fae8ff 35%, #f5f3ff 65%, #e0f2fe 100%) !important;
+        background-color: #f5f3ff !important;
+        color: #1e293b !important;
+    }
     
-    .hero-container {{ text-align: center; padding: 1.5rem 0; }}
-    .hero-title {{ font-size: 2.8rem; font-weight: 800; color: {TXT_ORANGE} !important; margin-bottom: 0.5rem; }}
-    .hero-subtitle {{ font-size: 1.2rem; font-weight: 500; color: {TXT_MUTED} !important; margin-bottom: 0.5rem; }}
-    .hero-small {{ font-size: 0.95rem; color: {TXT_MUTED} !important; margin-bottom: 2rem; }}
+    .hero-container { text-align: center; padding: 1.5rem 0; }
+    .hero-title { font-size: 2.8rem; font-weight: 800; color: #ea580c !important; margin-bottom: 0.5rem; }
+    .hero-subtitle { font-size: 1.2rem; font-weight: 500; color: #1e293b !important; margin-bottom: 0.5rem; }
+    .hero-small { font-size: 0.95rem; color: #64748b !important; margin-bottom: 2rem; }
     
-    .card-1 {{ background-color: #fef08a !important; border: 1px solid #fef08a !important; }}
-    .card-2 {{ background-color: #dbeafe !important; border: 1px solid #dbeafe !important; }}
-    .card-3 {{ background-color: #bfdbfe !important; border: 1px solid #bfdbfe !important; }}
-    .card-4 {{ background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; }}
+    /* Hardcoded Bright Pastel Profiles for Cards */
+    .card-1 { background-color: #fef08a !important; border: 1px solid #fef08a !important; }
+    .card-2 { background-color: #dbeafe !important; border: 1px solid #dbeafe !important; }
+    .card-3 { background-color: #bfdbfe !important; border: 1px solid #bfdbfe !important; }
+    .card-4 { background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; }
     
-    .ui-card {{ 
+    .ui-card { 
         border-radius: 16px !important; 
         padding: 1.8rem !important; 
         min-height: 220px !important; 
@@ -60,17 +58,27 @@ CSS_SHEET = f"""
         flex-direction: column !important; 
         justify-content: space-between !important;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
-    }}
-    .card-title {{ font-size: 1.5rem; font-weight: 700; color: #1e293b !important; margin-bottom: 0.8rem; }}
-    .card-desc {{ font-size: 0.95rem; color: #64748b !important; line-height: 1.5; }}
-    .card-icon {{ font-size: 2.2rem; text-align: right; margin-top: auto; }}
+    }
+    .card-title { font-size: 1.5rem; font-weight: 700; color: #1e293b !important; margin-bottom: 0.8rem; }
+    .card-desc { font-size: 0.95rem; color: #64748b !important; line-height: 1.5; }
+    .card-icon { font-size: 2.2rem; text-align: right; margin-top: auto; }
     
-    .stChatMessage, .stChatMessage p, .stChatMessage div, .stChatMessage span, 
-    div[data-testid="stMarkdownContainer"] p, td, th, table, tr, li, ul, ol, span, p, div {{ 
-        color: #1e293b !important; 
-    }}
-    table {{ background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; width: 100%; }}
-    th, td {{ border: 1px solid #e2e8f0 !important; padding: 10px; }}
+    /* Lock typography styling down permanently */
+    p, span, div, label, h1, h2, h3, .stMarkdown, div[data-testid="stMarkdownContainer"] p {
+        color: #1e293b !important;
+    }
+    
+    /* Force chat messages to stay clean and bright light mode */
+    div[data-testid="stChatMessage"] {
+        background-color: rgba(255, 255, 255, 0.6) !important;
+        border: 1px solid rgba(128, 128, 128, 0.2) !important;
+        border-radius: 12px !important;
+        padding: 10px !important;
+        margin-bottom: 10px !important;
+    }
+    
+    table { background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; width: 100%; }
+    th, td { border: 1px solid #e2e8f0 !important; padding: 10px; color: #1e293b !important; }
 </style>
 """
 st.markdown(CSS_SHEET, unsafe_allow_html=True)
@@ -132,7 +140,7 @@ def run_pdf_rag_search(query: str) -> str:
             return ""
     return ""
 
-# --- 7. REINFORCED SCHEMAS WITH IMMUNE DEFAULTS TO PREVENT CRASHES ---
+# --- 7. REINFORCED SCHEMAS WITH SAFE DEFAULTS ---
 class FlightSearchSchema(BaseModel):
     departure_airport: str = Field(default="HYD", description="The 3-letter airport code (e.g., HYD, BOM). Defaults to HYD.")
     arrival_airport: str = Field(default="GOI", description="The 3-letter destination code (e.g., BLR, DXB, GOI).")
@@ -152,7 +160,7 @@ class ItinerarySchema(BaseModel):
 
 @tool(args_schema=FlightSearchSchema)
 def search_flights(departure_airport: str, arrival_airport: str, outbound_date: str, return_date: str) -> str:
-    """Queries live Google Flights via SerpAPI for real-time ticket choices, exact pricing, explicit clock timings, and carrier routes globally."""
+    """Queries live Google Flights via SerpAPI."""
     if not arrival_airport: arrival_airport = "GOI"
     if not departure_airport: departure_airport = "HYD"
     if not outbound_date: outbound_date = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
@@ -160,11 +168,9 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
     
     rag_check = f"Flights from {departure_airport} to {arrival_airport} on {outbound_date}"
     local_doc = run_pdf_rag_search(rag_check)
-    if local_doc.strip():
-        return local_doc
+    if local_doc.strip(): return local_doc
         
-    if "SERPAPI_KEY" not in st.secrets:
-        return "Missing SERPAPI_KEY configuration token."
+    if "SERPAPI_KEY" not in st.secrets: return "Missing SERPAPI_KEY configuration token."
     time.sleep(1.0)
     params = {
         "engine": "google_flights", "departure_id": departure_airport.upper().strip(),
@@ -188,14 +194,10 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
                 flight_num = first_leg.get("flight_number", "N/A")
                 dep_clock = "N/A"
                 arr_clock = "N/A"
-                if "departure_airport_time" in first_leg:
-                    dep_clock = first_leg.get("departure_airport_time")
-                elif isinstance(first_leg.get("departure_airport"), dict):
-                    dep_clock = first_leg["departure_airport"].get("time", "N/A")
-                if "arrival_airport_time" in first_leg:
-                    arr_clock = first_leg.get("arrival_airport_time")
-                elif isinstance(first_leg.get("arrival_airport"), dict):
-                    arr_clock = first_leg["arrival_airport"].get("time", "N/A")
+                if "departure_airport_time" in first_leg: dep_clock = first_leg.get("departure_airport_time")
+                elif isinstance(first_leg.get("departure_airport"), dict): dep_clock = first_leg["departure_airport"].get("time", "N/A")
+                if "arrival_airport_time" in first_leg: arr_clock = first_leg.get("arrival_airport_time")
+                elif isinstance(first_leg.get("arrival_airport"), dict): arr_clock = first_leg["arrival_airport"].get("time", "N/A")
                 if " " in str(dep_clock): dep_clock = str(dep_clock).split(" ")[-1]
                 if " " in str(arr_clock): arr_clock = str(arr_clock).split(" ")[-1]
                 duration = flight_option.get("total_duration", "N/A")
@@ -203,25 +205,21 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
                 summary += f"   * ⏰ **Timings:** **{dep_clock}** ➡️ **{arr_clock}** ({duration} mins, Non-stop)\n"
                 summary += f"   * 💵 **Fare:** ₹{price:,} INR\n"
                 summary += f"   * 🟢 **Status:** Inventory Verified Open\n\n"
-            else:
-                summary += f"{i+1}. **Premium Carrier Leg Option** | Fares from: ₹{price:,} INR\n\n"
         return summary
     except Exception:
         return ddg_search_fallback(f"flight connections exact departure arrival clock timings from {departure_airport} to {arrival_airport} dates {outbound_date}")
 
 @tool(args_schema=HotelSearchSchema)
 def search_hotels(destination_city: str, check_in_date: str, check_out_date: str) -> str:
-    """Queries live Google Hotels via SerpAPI for authentic available properties, granular nightly breakdown rates, user reviews, and specific property amenity tokens."""
+    """Queries live Google Hotels via SerpAPI."""
     if not destination_city: destination_city = "Goa"
     if not check_in_date: check_in_date = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
     if not check_out_date: check_out_date = (datetime.now() + timedelta(days=9)).strftime('%Y-%m-%d')
     
     local_doc = run_pdf_rag_search(f"Hotels and stays inside {destination_city}")
-    if local_doc.strip():
-        return local_doc
+    if local_doc.strip(): return local_doc
         
-    if "SERPAPI_KEY" not in st.secrets:
-        return "Missing SERPAPI_KEY configuration token."
+    if "SERPAPI_KEY" not in st.secrets: return "Missing SERPAPI_KEY configuration token."
     time.sleep(1.0)
     params = {
         "engine": "google_hotels", "q": f"Hotels in {destination_city.strip().title()}",
@@ -241,26 +239,19 @@ def search_hotels(destination_city: str, check_in_date: str, check_out_date: str
             reviews_count = hotel.get("reviews", "N/A")
             rate_per_night = hotel.get("rate_per_night", {})
             lowest_price = rate_per_night.get("lowest", "Contact For Fare")
-            before_taxes = rate_per_night.get("before_taxes_and_fees", "N/A")
             amenities = hotel.get("amenities", [])
-            amenities_str = ", ".join(amenities[:4]) if amenities else "Free Wi-Fi, Pool, Room Service"
-            description = hotel.get("description", "Premium property located near regional transit hubs.")
-            link = hotel.get("link", "#")
-            summary += f"{i+1}. **[{name}]({link})**\n"
-            summary += f"   * 📝 **Property Profile:** {description}\n"
+            amenities_str = ", ".join(amenities[:4]) if amenities else "Free Wi-Fi, Pool"
+            summary += f"{i+1}. **{name}**\n"
             summary += f"   * ⭐ **User Rating:** {rating}/5 ({reviews_count} verified reviews)\n"
-            summary += f"   * 💵 **Rate Pricing Breakdown:**\n"
-            summary += f"     - Base Rate: {before_taxes} per night\n"
-            summary += f"     - **Final Rate (inc. Taxes):** {lowest_price} INR\n"
-            summary += f"   * 🌟 **Key Perks & Amenities:** `{amenities_str}`\n"
-            summary += f"   * 🟢 **Booking Status:** Rooms verified open for select tier options\n\n"
+            summary += f"   * 💵 **Final Rate (inc. Taxes):** {lowest_price} INR\n"
+            summary += f"   * 🌟 **Key Perks & Amenities:** `{amenities_str}`\n\n"
         return summary
     except Exception:
         return ddg_search_fallback(f"available hotels stay choices pricing metrics amenities in {destination_city} dates {check_in_date}")
 
 @tool(args_schema=WeatherSchema)
 def get_weather(target_city: str) -> str:
-    """Fetches genuine real-time current temperatures, wind speeds, UV index indexes, and structured upcoming forecast blocks globally."""
+    """Fetches genuine real-time current temperatures and forecasts."""
     if not target_city: target_city = "Goa"
     city_name = target_city.strip().title()
     if "WEATHER_API_KEY" in st.secrets and st.secrets["WEATHER_API_KEY"].strip():
@@ -269,43 +260,38 @@ def get_weather(target_city: str) -> str:
             response = requests.get(url).json()
             if "error" not in response:
                 location = response["location"]["name"]
-                country = response["location"]["country"]
                 current = response["current"]
-                summary = f"### 🌤️ Live Exhaustive Weather Profile for {location}, {country}\n"
+                summary = f"### 🌤️ Live Weather Profile for {location}\n"
                 summary += f"* **Current Temperature:** {current['temp_c']}°C (Feels like: {current['feelslike_c']}°C)\n"
                 summary += f"* **Atmospheric Condition:** {current['condition']['text']}\n"
-                summary += f"* **Humidity Levels:** {current['humidity']}% | 💨 **Wind Speed:** {current['wind_kph']} km/h\n"
-                summary += f"* **UV Index Protection Metric:** {current['uv']}\n\n"
                 forecast_days = response.get("forecast", {}).get("forecastday", [])
                 if forecast_days:
-                    summary += "**📅 3-Day Regional Forecast Look-Ahead:**\n"
+                    summary += "**📅 3-Day Forecast Look-Ahead:**\n"
                     for day_item in forecast_days:
                         summary += f"  - **{day_item.get('date', 'N/A')}:** Max: {day_item.get('day', {}).get('maxtemp_c', 'N/A')}°C, Min: {day_item.get('day', {}).get('mintemp_c', 'N/A')}°C | *{day_item.get('day', {}).get('condition', {}).get('text', 'Clear')}*\n"
                 return summary
         except Exception:
             pass
-    return ddg_search_fallback(f"current detailed temperature conditions humidity wind speed forecast inside city {city_name} today")
+    return ddg_search_fallback(f"current detailed temperature conditions weather forecast inside city {city_name} today")
 
 @tool(args_schema=ItinerarySchema)
 def plan_itinerary(destination: str) -> str:
-    """Assembles customized, highly scannable day-by-day sightseeing timelines, tracking nearby attractions globally."""
+    """Assembles customized day-by-day sightseeing timelines."""
     if not destination: destination = "Goa"
     local_doc = run_pdf_rag_search(f"itinerary sightseeing guide for {destination}")
-    if local_doc.strip():
-        return local_doc
+    if local_doc.strip(): return local_doc
     try:
-        return ddg_search_fallback(f"comprehensive travel itinerary historical places nearby tourist landmarks spots things to do in {destination}")
+        return ddg_search_fallback(f"comprehensive travel itinerary landmarks landmarks landmarks things to do in {destination}")
     except Exception as e:
         return f"Itinerary construction error: {str(e)}"
 
 # --- SYSTEM PROMPT ---
-SYSTEM_PROMPT = f"""You are a premium AI Travel Agent. Today's date is {datetime.now().strftime('%Y-%m-%d')}.
+SYSTEM_PROMPT = """You are a premium AI Travel Agent.
 STRICT CONTENT OUTPUT LAYOUT RULES:
 1. POINT-WISE STEP BREAKDOWNS ONLY: Output your plan completely in crisp, point-wise day blocks or clear bullet milestones. No summary paragraphs.
 2. EVERY STEP DETAILED: Every point must outline exact flight info, hotel names, or pricing scales directly.
-3. INLINE CLOCK TIMINGS: For flight details, display the explicit wall-clock times (e.g., 06:15 -> 09:45) inline.
-4. PAST MEMORY SYNC: Maintain conversational reference history across turns.
-5. NO TRASH TEXT: Strip technical dictionary tracking blocks or trailing text wrappers completely."""
+3. INLINE CLOCK TIMINGS: Display explicit wall-clock times (e.g., 06:15 -> 09:45) inline.
+4. NO TRASH TEXT: Strip technical dictionary tracking blocks or trailing text wrappers completely."""
 
 # --- 8. CHAT FEED DISPLAY LOOP ---
 for msg in st.session_state.messages:
@@ -358,7 +344,6 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
             if agent_output is not None:
                 raw_reply = str(agent_output["messages"][-1].content)
                 
-                # --- BULLETPROOF RAW STRING EXTRACTION PASS ---
                 clean_reply = raw_reply.split("extras=")[0].split("additional_kwargs=")[0].split("response_metadata=")[0].strip()
                 clean_reply = clean_reply.split("signature=")[0].split("{'type'")[0].strip()
                 
