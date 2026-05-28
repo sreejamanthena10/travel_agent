@@ -9,8 +9,8 @@ from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from langgraph.prebuilt import create_react_agent
-from langgraph.checkpoint.memory import MemorySaver  # <--- Added for persistent bot memory
+from langchain.agents import create_react_agent  # <--- UPDATED OFFICIAL IMPORT PATH
+from langgraph.checkpoint.memory import MemorySaver
 
 # --- 1. SYSTEM PAGE CONFIGURATIONS ---
 st.set_page_config(page_title="Free AI Travel Agent", page_icon="✈️", layout="wide")
@@ -25,11 +25,10 @@ if "theme" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 
-# --- Added memory instance to persist across app reruns ---
 if "agent_memory" not in st.session_state:
     st.session_state.agent_memory = MemorySaver()
 
-# --- 3. HEADER THEME CONTROLLER (Clean Toggle Without ON/OFF Text) ---
+# --- 3. HEADER THEME CONTROLLER ---
 col_space, col_toggle = st.columns([8, 2])
 with col_toggle:
     is_dark = st.toggle("🌙 Dark Mode", value=(st.session_state.theme == "dark"))
@@ -128,16 +127,15 @@ class WeatherSchema(BaseModel):
     target_city: str = Field(description="The city name to pull weather forecasts for.")
 
 class RestaurantSchema(BaseModel):
-    search_query: str = Field(description="The dining query or name with location (e.g., 'best restaurants in Dubai' or 'Paradise Biryani Karimnagar reviews').")
+    search_query: str = Field(description="The dining query or name with location (e.g., 'best restaurants in Dubai').")
 
 @tool(args_schema=FlightSearchSchema)
 def search_flights(departure_airport: str, arrival_airport: str, outbound_date: str, return_date: str) -> str:
-    """Queries live Google Flights via SerpAPI for real-time ticket choices, exact pricing, explicit clock timings, and carrier routes globally."""
+    """Queries live Google Flights via SerpAPI."""
     if "SERPAPI_KEY" not in st.secrets:
         return "Missing SERPAPI_KEY configuration token."
     time.sleep(1.0)
     
-    # Simple prompt handler: dynamic dates calculation if fields pass blank values
     if not outbound_date:
         outbound_date = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
     if not return_date:
@@ -182,7 +180,7 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
 
 @tool(args_schema=HotelSearchSchema)
 def search_hotels(destination_city: str, check_in_date: str, check_out_date: str) -> str:
-    """Queries live Google Hotels via SerpAPI for authentic available properties, nightly breakdown rates, and amenities in a location."""
+    """Queries live Google Hotels via SerpAPI."""
     if "SERPAPI_KEY" not in st.secrets:
         return "Missing SERPAPI_KEY configuration token."
     time.sleep(1.0)
@@ -245,7 +243,7 @@ def get_weather(target_city: str) -> str:
 
 @tool(args_schema=RestaurantSchema)
 def search_restaurants_and_reviews(search_query: str) -> str:
-    """Queries local maps search engines via SerpAPI to locate specific restaurants, food spots, ratings, and genuine customer reviews/recommendations."""
+    """Queries local maps search engines via SerpAPI to locate specific restaurants."""
     if "SERPAPI_KEY" not in st.secrets:
         return "Missing SERPAPI_KEY configuration token."
     time.sleep(1.0)
@@ -281,16 +279,16 @@ def search_restaurants_and_reviews(search_query: str) -> str:
 @tool
 def plan_itinerary(destination: str) -> str:
     """Assembles customized day-by-day sightseeing timelines."""
-    return f"Complete destination tracking sightseeing activities and historical places for {destination} loaded successfully."
+    return f"Complete destination tracking sightseeing activities for {destination} loaded successfully."
 
-# --- SYSTEM PROMPT (BUILT FOR BULLETED BLOCK TIMELINES) ---
+# --- SYSTEM PROMPT ---
 SYSTEM_PROMPT = f"""You are a premium, highly adaptive AI Travel Agent. Today's date is {datetime.now().strftime('%Y-%m-%d')}.
 
 STRICT CONTENT OUTPUT LAYOUT RULES:
-1. POINT-WISE STEP BREAKDOWNS ONLY (NO PROSE SUMMARY PARAGRAPHS): When asked to plan a trip, itinerary, or hotel stay, you are explicitly FORBIDDEN from writing general summaries or conversational intro blocks. Output your plan completely in crisp, point-wise day blocks or clear bullet milestones. 
-2. EVERY STEP DETAILED: Every point must outline exact items (e.g. Morning sightseeing spots, explicit ticket pricing metrics, hotel per-night numbers) so it is instantly legible.
+1. POINT-WISE STEP BREAKDOWNS ONLY (NO PROSE SUMMARY PARAGRAPHS): Output your plan completely in crisp, point-wise day blocks or clear bullet milestones. 
+2. EVERY STEP DETAILED: Every point must outline exact items so it is instantly legible.
 3. FLAWLESS TIMINGS: For flight queries, display the explicit wall-clock times (e.g., 06:15 ➡️ 09:45) directly inline.
-4. AUTOMATIC DATE HANDLING FOR SIMPLE PROMPTS: If a user gives a brief location query without dates, automatically establish a 3-day travel window starting 7 days from today to fuel the search tools behind the scenes without breaking.
+4. AUTOMATIC DATE HANDLING FOR SIMPLE PROMPTS: Automatically establish a 3-day travel window starting 7 days from today to fuel the search tools behind the scenes if dates are missing.
 5. NO TRASH TEXT: Do not append technical signatures, text block brackets, metadata keys, or dictionary fields anywhere in your answer."""
 
 # --- 8. CHAT FEED DISPLAY LOOP ---
@@ -327,7 +325,7 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
                 try:
                     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=clean_key, temperature=0.0)
                     
-                    # CONFIG UPDATE: Connected persistent checkpointer memory saver state to make it remember past queries
+                    # FIXED POSITION FOR THE PREBUILT AGENT PIPELINE RUNTIME
                     agent_executor = create_react_agent(
                         llm, 
                         tools=[search_flights, search_hotels, get_weather, search_restaurants_and_reviews, plan_itinerary],
@@ -350,11 +348,11 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
             if agent_output is not None:
                 raw_reply = str(agent_output["messages"][-1].content)
                 
-                # --- AGGRESSIVE PRODUCTION TRUNCATION PASS (Kills all metadata strings permanently) ---
+                # --- SECURE COMPILATION STRIP ENGINE ---
                 clean_reply = raw_reply.split("extras=")[0].split("additional_kwargs=")[0].split("response_metadata=")[0].strip()
                 clean_reply = clean_reply.split("signature=")[0].split("{'type'")[0].strip()
                 
-                # Strip bracket structures if present at the end
+                # Fixed complete non-truncated regex cleanup pass
                 clean_reply = re.sub(r"\[\s*\{\s*['\"]type['\"]:\s*['\"]text['\"].*?\}\s*\]", "", clean_reply, flags=re.DOTALL)
                 clean_reply = clean_reply.rstrip("]}[',: \n\r\"")
                 
