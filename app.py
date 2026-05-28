@@ -19,78 +19,80 @@ st.set_page_config(page_title="Free AI Travel Agent", page_icon="✈️", layout
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "theme" not in st.session_state:
-    st.session_state.theme = "light"
-
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 
 if "agent_memory" not in st.session_state:
     st.session_state.agent_memory = MemorySaver()
 
-# --- 3. HEADER THEME CONTROLLER (Clean Toggle Without ON/OFF Text) ---
-col_space, col_toggle = st.columns([8, 2])
-with col_toggle:
-    is_dark = st.toggle("🌙 Dark Mode", value=(st.session_state.theme == "dark"))
-    new_theme = "dark" if is_dark else "light"
-    if new_theme != st.session_state.theme:
-        st.session_state.theme = new_theme
-        st.rerun()
-
-# --- 4. HARDCODED SYSTEM-INDEPENDENT CSS ENGINE ---
-if st.session_state.theme == "dark":
-    BG_STYLE = "radial-gradient(circle at 50% 50%, #1e1b4b 0%, #111827 100%)"
-    TXT_MAIN = "#ffffff"
-    TXT_MUTED = "#94a3b8"
-    TXT_ORANGE = "#ff7a33"
-    CARD_BG = "#1f2937"       
-    CARD_BORDER = "#374151"
-    FORCE_FONT = "#ffffff"
-else:
-    BG_STYLE = "radial-gradient(circle at 50% 50%, #fee2e2 0%, #fae8ff 35%, #f5f3ff 65%, #e0f2fe 100%)"
-    TXT_MAIN = "#1e293b"
-    TXT_MUTED = "#64748b"
-    TXT_ORANGE = "#ea580c"      
-    CARD_BG = "#ffffff"       
-    CARD_BORDER = "#e2e8f0"
-    FORCE_FONT = "#1e293b"
+# --- 3. HARDCODED LIGHT PASTEL CSS ENGINE (Locked & Immune to OS Themes) ---
+BG_STYLE = "radial-gradient(circle at 50% 50%, #fee2e2 0%, #fae8ff 35%, #f5f3ff 65%, #e0f2fe 100%)"
+TXT_MAIN = "#1e293b"
+TXT_MUTED = "#64748b"
+TXT_ORANGE = "#ea580c"      
+FORCE_FONT = "#1e293b"
 
 CSS_SHEET = f"""
 <style>
-    .stApp {{ background: {BG_STYLE} !important; color: {TXT_MAIN} !important; }}
+    /* Absolute background lock */
+    .stApp {{ 
+        background: {BG_STYLE} !important; 
+        color: {TXT_MAIN} !important; 
+    }}
+    
     .hero-container {{ text-align: center; padding: 1.5rem 0; }}
     .hero-title {{ font-size: 2.8rem; font-weight: 800; color: {TXT_ORANGE} !important; margin-bottom: 0.5rem; }}
     .hero-subtitle {{ font-size: 1.2rem; font-weight: 500; color: {TXT_MUTED} !important; margin-bottom: 0.5rem; }}
     .hero-small {{ font-size: 0.95rem; color: {TXT_MUTED} !important; margin-bottom: 2rem; }}
-    .ui-card {{ border: 1px solid {CARD_BORDER} !important; border-radius: 16px !important; padding: 1.8rem !important; min-height: 220px !important; display: flex !important; flex-direction: column !important; justify-content: space-between !important; background-color: {CARD_BG} !important; }}
-    .card-title {{ font-size: 1.5rem; font-weight: 700; color: {TXT_MAIN} !important; margin-bottom: 0.8rem; }}
-    .card-desc {{ font-size: 0.95rem; color: {TXT_MUTED} !important; line-height: 1.5; }}
+    
+    /* Dedicated Color Profiles for Each Custom Card */
+    .card-1 {{ background-color: #fef08a !important; border: 1px solid #fef08a !important; }}
+    .card-2 {{ background-color: #dbeafe !important; border: 1px solid #dbeafe !important; }}
+    .card-3 {{ background-color: #bfdbfe !important; border: 1px solid #bfdbfe !important; }}
+    .card-4 {{ background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; }}
+    
+    .ui-card {{ 
+        border-radius: 16px !important; 
+        padding: 1.8rem !important; 
+        min-height: 220px !important; 
+        display: flex !important; 
+        flex-direction: column !important; 
+        justify-content: space-between !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+    }}
+    .card-title {{ font-size: 1.5rem; font-weight: 700; color: #1e293b !important; margin-bottom: 0.8rem; }}
+    .card-desc {{ font-size: 0.95rem; color: #64748b !important; line-height: 1.5; }}
     .card-icon {{ font-size: 2.2rem; text-align: right; margin-top: auto; }}
-    .stChatMessage, .stChatMessage p, .stChatMessage div, .stChatMessage span, div[data-testid="stMarkdownContainer"] p, td, th, table, tr, li, ul, ol {{ color: {FORCE_FONT} !important; }}
-    table {{ background-color: {CARD_BG} !important; border: 1px solid {CARD_BORDER} !important; width: 100%; }}
-    th, td {{ border: 1px solid {CARD_BORDER} !important; padding: 10px; }}
+    
+    /* Global markup text formatting locks */
+    .stChatMessage, .stChatMessage p, .stChatMessage div, .stChatMessage span, div[data-testid="stMarkdownContainer"] p, td, th, table, tr, li, ul, ol {{ 
+        color: {FORCE_FONT} !important; 
+    }}
+    table {{ background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; width: 100%; }}
+    th, td {{ border: 1px solid #e2e8f0 !important; padding: 10px; }}
 </style>
 """
 st.markdown(CSS_SHEET, unsafe_allow_html=True)
 
-# --- 5. MAIN HERO TEXT SECTION ---
+# --- 4. MAIN HERO TEXT SECTION ---
 st.markdown("""
 <div class="hero-container">
     <div class="hero-title">Begin Your Next Adventure 🎈</div>
     <div class="hero-subtitle">Hi! I'm your AI Trip Partner, here to make trip planning easy. Share your travel details, and I'll make your ideal plan! Happy Travels! ✈️</div>
+    <div class="hero-small">Start by choosing priority service or just describing your needs below!</div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- 6. FOUR CUSTOM CARDS LAYOUT ---
+# --- 5. FOUR CUSTOM CARDS LAYOUT ---
 c1, c2, c3, c4 = st.columns(4)
-with c1: st.markdown('<div class="ui-card"><div><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences.</div></div><div class="card-icon">📍</div></div>', unsafe_allow_html=True)
-with c2: st.markdown('<div class="ui-card"><div><div class="card-title">Find Flights</div><div class="card-desc">Smart deals tracked across multiple sources.</div></div><div class="card-icon">📅</div></div>', unsafe_allow_html=True)
-with c3: st.markdown('<div class="ui-card"><div><div class="card-title">Find Hotels</div><div class="card-desc">Accommodations matched to your needs.</div></div><div class="card-icon">🏨</div></div>', unsafe_allow_html=True)
-with c4: st.markdown('<div class="ui-card"><div><div class="card-title">Not sure?</div><div class="card-desc">Let conversational AI suggest options step-by-step.</div></div><div class="card-icon">🔮</div></div>', unsafe_allow_html=True)
+with c1: st.markdown('<div class="ui-card card-1"><div><div class="card-title">Build Itinerary</div><div class="card-desc">Tailored completely for your preferences and days.</div></div><div class="card-icon">📍</div></div>', unsafe_allow_html=True)
+with c2: st.markdown('<div class="ui-card card-2"><div><div class="card-title">Find Flights</div><div class="card-desc">Smart deals tracked across multiple global sources.</div></div><div class="card-icon">📅</div></div>', unsafe_allow_html=True)
+with c3: st.markdown('<div class="ui-card card-3"><div><div class="card-title">Find Hotels</div><div class="card-desc">Perfect accommodation metrics matched to your needs.</div></div><div class="card-icon">🏨</div></div>', unsafe_allow_html=True)
+with c4: st.markdown('<div class="ui-card card-4"><div><div class="card-title">Not sure?</div><div class="card-desc">Let our smart conversational AI suggest options step-by-step.</div></div><div class="card-icon">🔮</div></div>', unsafe_allow_html=True)
 
-st.markdown("<br><hr><br>", unsafe_allow_html=True)
+st.markdown("<br><hr style='border-top: 1px solid #e2e8f0;'><br>", unsafe_allow_html=True)
 
-# --- 7. GLOBAL TRAVEL DATA SCHEMAS ---
+# --- 6. GLOBAL TRAVEL DATA SCHEMAS ---
 class FlightSearchSchema(BaseModel):
     departure_airport: str = Field(default="HYD", description="3-letter airport code (e.g., HYD, BOM).")
     arrival_airport: str = Field(default="GOI", description="3-letter destination code (e.g., DXB, GOI).")
@@ -238,12 +240,12 @@ STRICT CONTENT OUTPUT LAYOUT RULES:
 4. PAST MEMORY SYNC: Maintain conversational reference history across turns.
 5. NO TRASH TEXT: Strip technical dictionary tracking blocks or trailing text wrappers completely."""
 
-# --- 8. CHAT FEED DISPLAY LOOP ---
+# --- 7. CHAT FEED DISPLAY LOOP ---
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# --- 9. AI PROCESSING PIPELINE ENGINE ---
+# --- 8. AI PROCESSING PIPELINE ENGINE ---
 if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaurant reviews here..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
