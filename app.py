@@ -138,14 +138,14 @@ def search_flights(departure_airport: str, arrival_airport: str, outbound_date: 
         if not best_flights: return ddg_search_fallback(f"flight timings options from {departure_airport} to {arrival_airport}")
         
         summary = f"### ✈️ Live Flight Schedule & Pricing ({departure_airport} ➡️ {arrival_airport})\n\n"
-        for i, flight_option in enumerate(best_flights[:2]):
+        for i, flight_option in enumerate(best_flights[:3]):
             price = flight_option.get("price", "Dynamic Fare")
             legs = flight_option.get("flights", [])
             if legs:
                 airline = legs[0].get("airline", "Carrier")
                 dep_clock = legs[0].get("departure_airport_time", "N/A").split(" ")[-1]
                 arr_clock = legs[0].get("arrival_airport_time", "N/A").split(" ")[-1]
-                summary += f"* **{airline}** | ⏰ **{dep_clock}** ➡️ **{arr_clock}** | 💵 ₹{price:,} INR\n"
+                summary += f"{i+1}. **{airline}** | ⏰ **{dep_clock}** ➡️ **{arr_clock}** | 💵 ₹{price:,} INR\n"
         return summary
     except Exception:
         return ddg_search_fallback(f"flight options from {departure_airport} to {arrival_airport}")
@@ -170,10 +170,10 @@ def search_hotels(destination_city: str, check_in_date: str, check_out_date: str
         if not properties: return ddg_search_fallback(f"accommodations in {destination_city}")
         
         summary = f"### 🏨 Top Lodging Options in {destination_city.title()}\n\n"
-        for hotel in properties[:2]:
+        for i, hotel in enumerate(properties[:3]):
             name = hotel.get("name", "Premium Hotel Stay")
             rate = hotel.get("rate_per_night", {}).get("lowest", "Dynamic Rate")
-            summary += f"* **{name}** | 💵 Room Rate: {rate} INR per night\n"
+            summary += f"{i+1}. **{name}** | 💵 Room Rate: {rate} INR per night\n"
         return summary
     except Exception:
         return ddg_search_fallback(f"hotels in {destination_city}")
@@ -289,9 +289,19 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
             if agent_output is not None:
                 raw_reply = str(agent_output["messages"][-1].content)
                 
-                # --- SAFE AND UNIFIED STRING TRUNCATION PASS ---
+                # --- BULLETPROOF RAW STRING EXTRACTION PASS ---
                 clean_reply = raw_reply.split("extras=")[0].split("additional_kwargs=")[0].split("response_metadata=")[0].strip()
                 clean_reply = clean_reply.split("signature=")[0].split("{'type'")[0].strip()
                 
-                # Simplified, non-breaking cleaning pass to drop leftover list arrays
-                if
+                if "text=" in clean_reply:
+                    clean_reply = clean_reply.split("text=")[-1].strip(" '\"[]{}")
+                    
+                clean_reply = clean_reply.strip("]}[',: \n\r\"")
+                
+                if len(clean_reply) < 5:
+                    clean_reply = raw_reply
+                    
+                response_placeholder.markdown(clean_reply)
+                st.session_state.messages.append({"role": "assistant", "content": clean_reply})
+            else:
+                response_placeholder.markdown(f"❌ Connection Error: {execution_error}")
