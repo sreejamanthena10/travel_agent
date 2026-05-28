@@ -29,7 +29,7 @@ if "session_id" not in st.session_state:
 if "agent_memory" not in st.session_state:
     st.session_state.agent_memory = MemorySaver()
 
-# --- 3. HEADER THEME CONTROLLER (Native Fallback Synchronization) ---
+# --- 3. HEADER THEME CONTROLLER (Clean Toggle Without ON/OFF Text) ---
 col_space, col_toggle = st.columns([8, 2])
 with col_toggle:
     is_dark = st.toggle("🌙 Dark Mode", value=(st.session_state.theme == "dark"))
@@ -38,43 +38,61 @@ with col_toggle:
         st.session_state.theme = new_theme
         st.rerun()
 
-# --- 4. DYNAMIC THEME-INDEPENDENT NATIVE CSS ENGINE ---
-# Uses Streamlit native CSS variables to remain completely independent of custom string switching
-CSS_SHEET = """
+# --- 4. DYNAMIC SYSTEM THEME-INDEPENDENT CSS ENGINE ---
+# Hardcoded colors explicitly to lock out the device's night sky overwrite settings permanently
+if st.session_state.theme == "dark":
+    BG_STYLE = "radial-gradient(circle at 50% 50%, #1e1b4b 0%, #111827 100%)"
+    TXT_MAIN = "#ffffff"
+    TXT_MUTED = "#94a3b8"
+    TXT_ORANGE = "#ff7a33"
+    CARD_BG = "#1f2937"       
+    CARD_BORDER = "#374151"
+    FORCE_FONT = "#ffffff"
+else:
+    BG_STYLE = "radial-gradient(circle at 50% 50%, #fee2e2 0%, #fae8ff 35%, #f5f3ff 65%, #e0f2fe 100%)"
+    TXT_MAIN = "#1e293b"
+    TXT_MUTED = "#64748b"
+    TXT_ORANGE = "#ea580c"      
+    CARD_BG = "#ffffff"       
+    CARD_BORDER = "#e2e8f0"
+    FORCE_FONT = "#1e293b"
+
+CSS_SHEET = f"""
 <style>
-    /* Global Background Blend targeting system variables directly */
-    .stApp {
-        background: radial-gradient(circle at 50% 50%, var(--background-color) 0%, rgba(120,110,250,0.05) 100%) !important;
-    }
+    /* Completely overrides browser settings and system dark mode forced variations */
+    .stApp {{ 
+        background: {BG_STYLE} !important; 
+        color: {TXT_MAIN} !important; 
+    }}
     
-    .hero-container { text-align: center; padding: 1.5rem 0; }
-    .hero-title { font-size: 2.8rem; font-weight: 800; color: #ea580c !important; margin-bottom: 0.5rem; }
-    .hero-subtitle { font-size: 1.2rem; font-weight: 500; color: var(--text-color) !important; opacity: 0.85; margin-bottom: 0.5rem; }
-    .hero-small { font-size: 0.95rem; color: var(--text-color) !important; opacity: 0.6; margin-bottom: 2rem; }
+    .hero-container {{ text-align: center; padding: 1.5rem 0; }}
+    .hero-title {{ font-size: 2.8rem; font-weight: 800; color: {TXT_ORANGE} !important; margin-bottom: 0.5rem; }}
+    .hero-subtitle {{ font-size: 1.2rem; font-weight: 500; color: {TXT_MUTED} !important; margin-bottom: 0.5rem; }}
+    .hero-small {{ font-size: 0.95rem; color: {TXT_MUTED} !important; margin-bottom: 2rem; }}
     
-    /* Transparent Adaptive Glass Cards */
-    .ui-card { 
-        border: 1px solid rgba(128, 128, 128, 0.2); 
-        border-radius: 16px; 
-        padding: 1.8rem; 
-        min-height: 220px; 
-        display: flex; 
-        flex-direction: column; 
-        justify-content: space-between;
-        background-color: rgba(128, 128, 128, 0.06);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    }
-    .card-title { font-size: 1.5rem; font-weight: 700; color: var(--text-color) !important; margin-bottom: 0.8rem; }
-    .card-desc { font-size: 0.95rem; color: var(--text-color) !important; opacity: 0.75; line-height: 1.5; }
-    .card-icon { font-size: 2.2rem; text-align: right; margin-top: auto; }
+    /* System Independent Static Custom Cards */
+    .ui-card {{ 
+        border: 1px solid {CARD_BORDER} !important; 
+        border-radius: 16px !important; 
+        padding: 1.8rem !important; 
+        min-height: 220px !important; 
+        display: flex !important; 
+        flex-direction: column !important; 
+        justify-content: space-between !important;
+        background-color: {CARD_BG} !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+    }}
+    .card-title {{ font-size: 1.5rem; font-weight: 700; color: {TXT_MAIN} !important; margin-bottom: 0.8rem; }}
+    .card-desc {{ font-size: 0.95rem; color: {TXT_MUTED} !important; line-height: 1.5; }}
+    .card-icon {{ font-size: 2.2rem; text-align: right; margin-top: auto; }}
     
-    /* Enforced Text Alignment for Tables and Content Channels */
+    /* Block font variables directly to lock out automated browser overrides */
     .stChatMessage, .stChatMessage p, .stChatMessage div, .stChatMessage span,
-    div[data-testid="stMarkdownContainer"] p, td, th, table, tr, li, ul, ol { 
-        color: var(--text-color) !important; 
-    }
-    table { background-color: rgba(128, 128, 128, 0.03) !important; border: 1px solid rgba(128, 128, 128, 0.2) !important; width: 100%; }
-    th, td { border: 1px solid rgba(128, 128, 128, 0.2) !important; padding: 10px; }
+    div[data-testid="stMarkdownContainer"] p, td, th, table, tr, li, ul, ol {{ 
+        color: {FORCE_FONT} !important; 
+    }}
+    table {{ background-color: {CARD_BG} !important; border: 1px solid {CARD_BORDER} !important; width: 100%; }}
+    th, td {{ border: 1px solid {CARD_BORDER} !important; padding: 10px; }}
 </style>
 """
 st.markdown(CSS_SHEET, unsafe_allow_html=True)
@@ -242,7 +260,7 @@ def get_weather(target_city: str) -> str:
 
 @tool(args_schema=RestaurantSchema)
 def search_restaurants_and_reviews(search_query: str) -> str:
-    """Queries local maps search engines via SerpAPI to locate specific restaurants, food spots, ratings, and genuine customer reviews/recommendations."""
+    """Queries local maps search engines via SerpAPI to locate specific restaurants."""
     if "SERPAPI_KEY" not in st.secrets:
         return "Missing SERPAPI_KEY configuration token."
     time.sleep(1.0)
@@ -348,7 +366,8 @@ if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaura
                 
                 # --- AGGRESSIVE PRODUCTION TRUNCATION PASS ---
                 clean_reply = raw_reply.split("extras=")[0].split("additional_kwargs=")[0].split("response_metadata=")[0].strip()
-                clean_reply = clean_reply.split("signature=")[0].split("{'type'")[0].strip()
+                clean_reply = clean_reply.split("signature=")[0].split("{'type' converter")[0].strip()
+                clean_reply = clean_reply.split("{'type'")[0].strip()
                 
                 clean_reply = re.sub(r"\[\s*\{\s*['\"]type['\"]:\s*['\"]text['\"].*?\}\s*\]", "", clean_reply, flags=re.DOTALL)
                 clean_reply = clean_reply.rstrip("]}[',: \n\r\"")
