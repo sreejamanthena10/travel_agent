@@ -12,6 +12,9 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 
+# --- NEW SQL DATABASE CONNECTION INTERFACE ---
+from database import save_search, get_search_history
+
 # --- 1. SYSTEM PAGE CONFIGURATIONS ---
 st.set_page_config(page_title="Free AI Travel Agent", page_icon="✈️", layout="wide")
 
@@ -29,14 +32,25 @@ if "session_id" not in st.session_state:
 if "agent_memory" not in st.session_state:
     st.session_state.agent_memory = MemorySaver()
 
-# --- 3. HEADER THEME CONTROLLER (Clean Toggle Without ON/OFF Text) ---
-col_space, col_toggle = st.columns([8, 2])
+# --- 3. HEADER CONTROL PANEL (Theme Toggle + Compact History Dropdown Icon) ---
+col_space, col_history, col_toggle = st.columns([6, 2, 2])
+
 with col_toggle:
     is_dark = st.toggle("🌙 Dark Mode", value=(st.session_state.theme == "dark"))
     new_theme = "dark" if is_dark else "light"
     if new_theme != st.session_state.theme:
         st.session_state.theme = new_theme
         st.rerun()
+
+with col_history:
+    # Small, clean dropdown element that acts as a clickable popover history logger
+    with st.expander("📜 Search History", expanded=False):
+        history_records = get_search_history(st.session_state.session_id, limit=5)
+        if history_records:
+            for query_text, time_stamp in history_records:
+                st.markdown(f"🔍 `{query_text}`\n<small style='color:gray;'>{time_stamp}</small>", unsafe_allow_html=True)
+        else:
+            st.markdown("<small>No queries logged yet.</small>", unsafe_allow_html=True)
 
 # --- 4. DYNAMIC THEME-INDEPENDENT CSS ENGINE ---
 if st.session_state.theme == "dark":
@@ -300,6 +314,9 @@ for msg in st.session_state.messages:
 
 # --- 9. AI PROCESSING PIPELINE ENGINE ---
 if user_input := st.chat_input("Ask for trip plans, hotels, or specific restaurant reviews here..."):
+    # NEW EXECUTION PASS: Log query into the SQLite Database securely
+    save_search(st.session_state.session_id, user_input)
+    
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
